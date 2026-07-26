@@ -1,0 +1,40 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # sharp and better-sqlite3 ship platform-specific binaries; let npm resolve them
+  NPM_FLAGS = "--include=optional"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# The crawler and image pipeline need real Node APIs, so keep every server
+# route on the Node runtime rather than the edge.
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["sharp", "@libsql/client"]
+
+[functions."worker-tick"]
+  schedule = "*/5 * * * *"
+
+# Generated cover art is immutable once written — its key contains a content
+# hash — so it can be cached hard at the edge.
+[[headers]]
+  for = "/api/thumb/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+# The worker endpoint is driven by the scheduled function, never by crawlers.
+[[headers]]
+  for = "/api/worker"
+  [headers.values]
+    X-Robots-Tag = "noindex"

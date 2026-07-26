@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets and local configuration
+.env
+.env.local
+.env*.local
+!.env.example
+
+# the catalogue itself: SQLite database, WAL files and generated cover art.
+# Never commit this — it contains session tokens and password hashes.
+data/
+
+# netlify
+.netlify/
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+npm-debug.log*
+yarn-error.log*

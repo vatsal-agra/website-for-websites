@@ -1,0 +1,225 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------- tokens -- */
+/* Portico's chrome is deliberately near-monochrome. All of the colour in the
+   product comes from the websites themselves - their cover art and accent
+   hues. The interface is the gallery wall, not the painting. */
+
+:root,
+[data-theme='light'] {
+  --c-canvas: 250 249 246;
+  --c-surface: 255 255 255;
+  --c-raised: 255 255 255;
+  --c-line: 231 228 221;
+  --c-line-strong: 213 209 200;
+  --c-ink: 23 23 26;
+  --c-ink-soft: 61 61 68;
+  --c-muted: 108 106 100;
+  /* `faint` carries real content (timestamps, URLs, counts) at 11px, so it is
+     tuned to clear WCAG AA 4.5:1 against surface, not just to look quiet. */
+  --c-faint: 116 114 108;
+  --c-accent: 78 58 214;
+  --c-accent-soft: 236 233 253;
+  --c-accent-ink: 255 255 255;
+  --c-positive: 22 128 92;
+  --c-warning: 168 110 12;
+  --c-danger: 189 47 47;
+  --grain-opacity: 0.4;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --c-canvas: 10 10 12;
+  --c-surface: 18 18 21;
+  --c-raised: 24 24 28;
+  --c-line: 34 34 39;
+  --c-line-strong: 52 52 59;
+  --c-ink: 237 237 240;
+  --c-ink-soft: 199 199 206;
+  --c-muted: 138 138 148;
+  --c-faint: 126 126 136;
+  --c-accent: 154 137 255;
+  --c-accent-soft: 32 28 60;
+  --c-accent-ink: 12 10 28;
+  --c-positive: 74 201 155;
+  --c-warning: 226 168 62;
+  --c-danger: 240 113 113;
+  --grain-opacity: 0.28;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --c-canvas: 10 10 12;
+    --c-surface: 18 18 21;
+    --c-raised: 24 24 28;
+    --c-line: 34 34 39;
+    --c-line-strong: 52 52 59;
+    --c-ink: 237 237 240;
+    --c-ink-soft: 199 199 206;
+    --c-muted: 138 138 148;
+    --c-faint: 126 126 136;
+    --c-accent: 154 137 255;
+    --c-accent-soft: 32 28 60;
+    --c-accent-ink: 12 10 28;
+    --c-positive: 74 201 155;
+    --c-warning: 226 168 62;
+    --c-danger: 240 113 113;
+    --grain-opacity: 0.28;
+    color-scheme: dark;
+  }
+}
+
+/* ------------------------------------------------------------------ base -- */
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* so overscroll and letterboxed areas match the theme instead of going black */
+    @apply bg-canvas;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: rgb(var(--c-accent) / 0.22);
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-balance;
+  }
+
+  a {
+    @apply underline-offset-[3px];
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/70 ring-offset-2;
+    --tw-ring-offset-color: rgb(var(--c-canvas));
+  }
+
+  /* quiet, thin scrollbars that match the theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--c-line-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgb(var(--c-line-strong));
+    border-radius: 999px;
+    border: 3px solid rgb(var(--c-canvas));
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ------------------------------------------------------------ components -- */
+
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-shell px-5 sm:px-8;
+  }
+
+  .hairline {
+    @apply border-b border-line;
+  }
+
+  /* the small uppercase labels used throughout the product */
+  .eyebrow {
+    @apply font-mono text-2xs uppercase tracking-[0.16em] text-muted;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+
+  .link-quiet {
+    @apply no-underline transition-colors hover:text-ink;
+  }
+
+  /* horizontal shelves scroll-snap like a storefront rail */
+  .rail {
+    @apply flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2;
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .rail > * {
+    @apply snap-start;
+  }
+}
+
+/* ------------------------------------------------------------- utilities -- */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* subtle film grain that keeps large flat areas from looking dead */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .mask-fade-r {
+    mask-image: linear-gradient(to right, black 88%, transparent 100%);
+  }
+
+  .stack-fade > * {
+    animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stack-fade > *:nth-child(1) { animation-delay: 0.02s }
+  .stack-fade > *:nth-child(2) { animation-delay: 0.06s }
+  .stack-fade > *:nth-child(3) { animation-delay: 0.1s }
+  .stack-fade > *:nth-child(4) { animation-delay: 0.14s }
+  .stack-fade > *:nth-child(5) { animation-delay: 0.18s }
+  .stack-fade > *:nth-child(6) { animation-delay: 0.22s }
+  .stack-fade > *:nth-child(7) { animation-delay: 0.26s }
+  .stack-fade > *:nth-child(8) { animation-delay: 0.3s }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

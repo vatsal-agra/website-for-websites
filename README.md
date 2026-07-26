@@ -1,0 +1,215 @@
+# Portico
+
+**A storefront for the whole web.**
+
+App stores gave software a place to be browsed. Websites never got one. Search engines are excellent
+when you already know what you want and useless when you do not — Portico exists for the second case.
+
+People publish their site's URL to Portico, or Portico finds it on its own. Each entry gets a cover, a
+one-line description, a category, tags and a quality score. Readers browse the shelves, follow curated
+collections, search, or press **Shuffle** and land somewhere they would never have searched for.
+
+---
+
+## Running it
+
+```bash
+npm install
+npm run setup      # create the database, seed 240+ hand-catalogued sites
+npm run dev        # http://localhost:3000
+```
+
+In a second terminal, start the engine that keeps the catalogue alive:
+
+```bash
+npm run worker
+```
+
+The worker fetches cover art, polls discovery sources, ingests new sites, re-checks old ones and
+recomputes trending. Without it the site works fine — it just stops growing.
+
+Admin console at **/admin**. Default credentials are in `.env.local` (`admin` / `portico-admin`).
+Change them before putting this anywhere public.
+
+---
+
+## How it works
+
+### The pipeline
+
+Every URL — submitted or discovered — goes through the same path:
+
+| Stage | What happens | Code |
+| --- | --- | --- |
+| **Normalise** | Strip tracking params, resolve the host, build a dedupe key | `src/lib/url.ts` |
+| **Screen** | Blocklist, platform hosts, file extensions, suspicious TLDs | `src/lib/safety.ts` |
+| **Fetch** | One polite request: robots.txt respected, per-host delay, byte cap, timeout | `src/lib/fetcher.ts` |
+| **Parse** | Title, description, og:image, favicon, feeds, language, outbound links, ad/paywall/parked signals | `src/lib/metadata.ts` |
+| **Classify** | Weighted lexicon picks 1 of 16 categories and up to 6 tags from a fixed vocabulary | `src/lib/classify.ts` |
+| **Score** | Quality 0–1 from page evidence: description, viewport, https, ad networks, word count, response time | `src/lib/classify.ts` |
+| **Store** | Insert, index into FTS5, queue cover art, harvest outbound links as new candidates | `src/lib/ingest.ts` |
+
+Discovered sites scoring above `AUTO_APPROVE_QUALITY` go live automatically. Everything else — and
+every human submission — waits in the moderation queue.
+
+### Discovery
+
+Three source types, all free and keyless, managed at `/admin/sources`:
+
+- **Hacker News** — top, best and Show HN, filtered by score
+- **RSS/Atom** — link blogs (Lobsters, Kottke, Waxy, Sidebar), optionally harvesting links inside each entry
+- **Link graph** — re-reads sites already in the catalogue and follows their outbound links
+
+Good sites link to good sites. That turns out to be most of the signal you need.
+
+### Ranking
+
+```
+trending = (votes·5 + clicks·1.5 + views·0.2 + quality·3) / (days_listed + 3)^0.3
+```
+
+Engagement first, with a quality floor and gentle time decay. The gentle decay is
+deliberate: with a young catalogue almost nothing has been voted on, and a steep decay would make
+"Trending" a duplicate of "Newest" — burying curated entries under whatever the crawler found ten
+minutes ago. Public, simple, and the only thing that decides order. No paid placement.
+
+**Every number on the site is a real one.** Votes, clicks and views start at zero and only move when
+somebody actually does something. The founding catalogue carries the date it was really catalogued.
+Nothing is back-dated or padded to make a fresh install look busier than it is.
+
+### Cover art
+
+Preference order: opt-in screenshot → the site's own `og:image` → **generated artwork**. The generator
+derives a composition (arcs, bands, dot fields, ribbons, mesh) and palette from a hash of the URL, so
+every site has a distinctive cover and the same site always produces the same picture.
+
+---
+
+## Deploying to Netlify
+
+Netlify Functions have no persistent disk and no long-running process, so two things move
+off the local machine. Everything else deploys as-is.
+
+| Locally | On Netlify |
+| --- | --- |
+| SQLite file in `data/` | hosted libSQL (Turso) over HTTP — same SQL, same FTS5 |
+| Thumbnails in `data/thumbs/` | Netlify Blobs |
+| `npm run worker` loop | scheduled function poking `/api/worker` every 5 minutes |
+
+**1. Create the database** ([Turso](https://turso.tech) has a free tier):
+
+```bash
+turso db create portico && turso db show portico --url && turso db tokens create portico
+```
+
+**2. Populate it** — point your local machine at the remote database and seed it once:
+
+```bash
+TURSO_DATABASE_URL=libsql://… TURSO_AUTH_TOKEN=… npm run setup
+```
+
+**3. Set the environment variables** in Netlify → Site configuration → Environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `TURSO_DATABASE_URL` | `libsql://…` from step 1 |
+| `TURSO_AUTH_TOKEN` | token from step 1 |
+| `WORKER_TOKEN` | any long random string — **required**, or the worker refuses to run |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | change these from the defaults |
+| `NEXT_PUBLIC_SITE_URL` | optional; detected from Netlify's `$URL` if unset |
+
+**4. Deploy.** `netlify.toml` and `@netlify/plugin-nextjs` handle the rest. The scheduled
+function in `netlify/functions/worker-tick.mts` starts discovering sites on its own within
+five minutes.
+
+Nothing else is required — no Docker, no separate worker dyno, no object storage account.
+
+### Verifying a deploy
+
+```bash
+curl -X POST "https://your-site.netlify.app/api/worker?max=3" -H "x-worker-token: $WORKER_TOKEN"
+```
+
+It returns what it scheduled, promoted and ran. `/admin/jobs` shows the same queue in the UI.
+
+### Deploying somewhere else
+
+Any Node host works. With a writable disk (a VPS, Fly, Railway) leave `TURSO_DATABASE_URL`
+empty to keep the local SQLite file, and run `npm run worker` as a second process — that is
+the simpler setup, and the faster one, since queries stay in-process.
+
+---
+
+## Layout
+
+```
+src/
+  app/                 routes — public pages, /admin console, /api endpoints
+  components/          UI: cards, shelves, command palette, filters, cover art
+  lib/
+    db.ts schema.ts    libSQL connection + idempotent DDL
+    storage.ts         cover art: local disk or Netlify Blobs
+    ingest.ts          the pipeline
+    classify.ts        category + tag + quality scoring
+    metadata.ts        HTML parsing
+    fetcher.ts         polite fetching, robots.txt, concurrency pool
+    thumbs.ts          cover art + favicon caching (sharp)
+    jobs.ts handlers.ts  job queue and its handlers
+    sources/           discovery adapters
+    queries/           all SQL
+    seed/              the 240-site founding catalogue
+workers/worker.ts      the background loop (local / VPS)
+netlify/functions/     scheduled worker tick (serverless)
+scripts/               migrate · seed · reset · repair · dedupe · ingest · discover · inspect
+data/                  local SQLite database + thumbnails (gitignored)
+```
+
+Stack: Next.js 16 (App Router, React 19, server actions), TypeScript, Tailwind, libSQL/SQLite
+with FTS5 search, `sharp` for images. No API keys, no analytics, no telemetry.
+
+---
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build and serve |
+| `npm run worker` | Background worker — discovery, ingest, cover art, maintenance |
+| `npm run setup` | `db:migrate` + `db:seed` |
+| `npm run db:reset` | Delete the database and thumbnails |
+| `npm run db:repair` | Housekeeping: restore curated copy, tidy crawled titles, rebuild the index (`-- --prune` also retires ineligible entries) |
+| `npm run db:dedupe` | Collapse organisations listed more than once (`-- --dry` to preview) |
+| `npm run reclassify` | Re-file crawled sites against the current lexicon |
+| `npm run ingest -- <url> [--approve]` | Catalogue specific URLs from the CLI |
+| `npm run discover -- --jobs 40` | Run every source once and process the queue |
+| `npm run rescore` | Queue a re-crawl of anything without an evidence-based quality score (`-- --all` for everything) |
+| `npm run inspect` | Health readout: counts, cover art coverage, category spread, current top of the catalogue |
+| `npm run typecheck` | `tsc --noEmit` |
+
+## Configuration
+
+Everything in `.env.local`, all with working defaults — see `.env.example`. The ones worth knowing:
+
+- `AUTO_APPROVE_QUALITY` — quality threshold for auto-listing discovered sites (`0` to review everything)
+- `CRAWLER_HOST_DELAY_MS`, `CRAWLER_CONCURRENCY`, `CRAWLER_RESPECT_ROBOTS` — crawler politeness
+- `SCREENSHOTS_ENABLED=1` — real screenshots, after `npm i -D playwright && npx playwright install chromium`
+
+## Public endpoints
+
+- `/api/sites` — read-only JSON API with the same filters as `/browse`
+- `/feed.xml` — RSS of newest listings
+- `/sitemap.xml`, `/robots.txt`
+
+## Being a good citizen
+
+The crawler identifies as `PorticoBot`, requests one page per site, obeys `robots.txt` including
+wildcards, never logs in and never submits forms. To opt out entirely:
+
+```
+User-agent: PorticoBot
+Disallow: /
+```
+
+There is no analytics script, no third-party embed and no tracking cookie — the only cookie is the
+session. Outbound clicks pass through `/go/[slug]`, which increments a counter and strips the referrer.
