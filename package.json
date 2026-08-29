@@ -22,7 +22,8 @@
     "rescore": "tsx scripts/rescore.ts",
     "setup": "npm run db:migrate && npm run db:seed",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
-    "test:watch": "node --import tsx --test --watch \"tests/**/*.test.ts\""
+    "test:watch": "node --import tsx --test --watch \"tests/**/*.test.ts\"",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
