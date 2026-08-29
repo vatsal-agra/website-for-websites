@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +7,8 @@ import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/session'
 import { getSiteBySlug, recordView, relatedSites, bestOfCategory } from '@/lib/queries/sites'
 import { collectionsContaining } from '@/lib/queries/collections'
+import { ShelfSkeleton } from '@/components/skeletons'
+import type { Site } from '@/lib/types'
 import { ATTRIBUTE_DEFS } from '@/lib/taxonomy'
 import { displayUrl } from '@/lib/url'
 import { formatDate, formatNumber, timeAgo } from '@/lib/utils'
@@ -52,17 +55,6 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
   if (!site) notFound()
   if (site.status !== 'approved' && user?.role !== 'admin') notFound()
 
-  try {
-    await recordView(site.id)
-  } catch {
-    /* view counting must never break the page */
-  }
-
-  const related = await relatedSites(site, 8)
-  const inCollections = await collectionsContaining(site.id, 4)
-  const sameCategory = site.category
-    ? (await bestOfCategory(site.category.slug, 8, user?.id)).filter((s) => s.id !== site.id)
-    : []
   const activeAttributes = ATTRIBUTE_DEFS.filter((attr) => site.attributes[attr.key])
 
   const jsonLd = {
@@ -77,6 +69,10 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
+      <Suspense fallback={null}>
+        <RecordView siteId={site.id} />
+      </Suspense>
 
       {site.status !== 'approved' && (
         <div className="border-b border-warning/30 bg-warning/10">
@@ -235,26 +231,9 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
               </section>
             )}
 
-            {inCollections.length > 0 && (
-              <section>
-                <h2 className="eyebrow mb-3 flex items-center gap-1.5">
-                  <Layers className="h-3 w-3" />
-                  Appears in
-                </h2>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {inCollections.map((collection) => (
-                    <Link
-                      key={collection.id}
-                      href={`/collections/${collection.slug}`}
-                      className="rounded-xl border border-line bg-surface px-3.5 py-3 no-underline transition-colors hover:border-line-strong"
-                    >
-                      <p className="text-sm font-medium">{collection.title}</p>
-                      <p className="mt-0.5 text-xs text-muted">{collection.subtitle}</p>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
+            <Suspense fallback={null}>
+              <AppearsIn siteId={site.id} />
+            </Suspense>
           </div>
 
           {/* fact panel */}
@@ -298,30 +277,22 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
       </div>
 
       {/* --------------------------------------------------------- related -- */}
-      {related.length > 0 && (
-        <section className="shell mt-20">
-          <SectionHeader
-            eyebrow="Because you looked at this"
-            title="More like this"
-            description="Matched on shared tags and category."
-          />
-          <Shelf>
-            {related.map((item) => (
-              <SiteCard key={item.id} site={item} signedIn={Boolean(user)} variant="rail" />
-            ))}
-          </Shelf>
-        </section>
-      )}
+      <Suspense
+        fallback={<ShelfSkeleton eyebrow="Because you looked at this" title="More like this" />}
+      >
+        <RelatedShelf site={site} signedIn={Boolean(user)} />
+      </Suspense>
 
-      {sameCategory.length > 0 && site.category && (
-        <section className="shell mt-16 pb-8">
-          <SectionHeader eyebrow="Same shelf" title={`More in ${site.category.name}`} />
-          <Shelf>
-            {sameCategory.map((item) => (
-              <SiteCard key={item.id} site={item} signedIn={Boolean(user)} variant="rail" />
-            ))}
-          </Shelf>
-        </section>
+      {site.category && (
+        <Suspense fallback={<ShelfSkeleton eyebrow="Same shelf" title={`More in ${site.category.name}`} />}>
+          <SameShelf
+            categorySlug={site.category.slug}
+            categoryName={site.category.name}
+            excludeId={site.id}
+            userId={user?.id}
+            signedIn={Boolean(user)}
+          />
+        </Suspense>
       )}
     </>
   )
@@ -334,4 +305,96 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dd className="text-right text-ink-soft">{children}</dd>
     </div>
   )
+}
+
+// ------------------------------------------------------- streamed sections --
+// These are secondary to the listing itself, so they resolve after the page is
+// already readable rather than holding up the visit button.
+
+async function AppearsIn({ siteId }: { siteId: number }) {
+  const collections = await collectionsContaining(siteId, 4)
+  if (!collections.length) return null
+  return (
+    <section>
+      <h2 className="eyebrow mb-3 flex items-center gap-1.5">
+        <Layers className="h-3 w-3" />
+        Appears in
+      </h2>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {collections.map((collection) => (
+          <Link
+            key={collection.id}
+            href={`/collections/${collection.slug}`}
+            className="rounded-xl border border-line bg-surface px-3.5 py-3 no-underline transition-colors hover:border-line-strong"
+          >
+            <p className="text-sm font-medium">{collection.title}</p>
+            <p className="mt-0.5 text-xs text-muted">{collection.subtitle}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+async function RelatedShelf({ site, signedIn }: { site: Site; signedIn: boolean }) {
+  const related = await relatedSites(site, 8)
+  if (!related.length) return null
+  return (
+    <section className="shell mt-20">
+      <SectionHeader
+        eyebrow="Because you looked at this"
+        title="More like this"
+        description="Matched on shared tags and category."
+      />
+      <Shelf>
+        {related.map((item) => (
+          <SiteCard key={item.id} site={item} signedIn={signedIn} variant="rail" />
+        ))}
+      </Shelf>
+    </section>
+  )
+}
+
+async function SameShelf({
+  categorySlug,
+  categoryName,
+  excludeId,
+  userId,
+  signedIn,
+}: {
+  categorySlug: string
+  categoryName: string
+  excludeId: number
+  userId?: number
+  signedIn: boolean
+}) {
+  const sites = (await bestOfCategory(categorySlug, 8, userId)).filter((s) => s.id !== excludeId)
+  if (!sites.length) return null
+  return (
+    <section className="shell mt-16 pb-8">
+      <SectionHeader eyebrow="Same shelf" title={`More in ${categoryName}`} />
+      <Shelf>
+        {sites.map((item) => (
+          <SiteCard key={item.id} site={item} signedIn={signedIn} variant="rail" />
+        ))}
+      </Shelf>
+    </section>
+  )
+}
+
+/**
+ * Counts the view without holding up first paint.
+ *
+ * Deliberately a Suspense child rather than a fire-and-forget promise: on a
+ * serverless host an un-awaited write is liable to be dropped when the
+ * invocation ends, whereas work inside the tree keeps the response open until
+ * it finishes — and the shell has already streamed by then either way.
+ */
+async function RecordView({ siteId }: { siteId: number }) {
+  try {
+    await recordView(siteId)
+  } catch {
+    /* view counting must never break the page */
+  }
+  return null
 }

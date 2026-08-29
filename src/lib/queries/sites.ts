@@ -304,16 +304,28 @@ export async function reindexAll(): Promise<number> {
 
 // ---------------------------------------------------------------- discovery --
 
+/**
+ * Sites near this one: shared tags count for more than a shared category.
+ *
+ * The scored column lives in a derived table because Postgres, unlike SQLite,
+ * will not let a SELECT alias be used inside a larger ORDER BY expression.
+ */
 export async function relatedSites(site: Site, limit = 8): Promise<Site[]> {
   const tagIds = site.tags.map((t) => Number(t.id))
+  const sharedTags = tagIds.length
+    ? `(SELECT COUNT(*)::int FROM site_tags st WHERE st.site_id = s.id AND st.tag_id IN (${tagIds
+        .map(() => '?')
+        .join(',')}))`
+    : '0'
+
   const rows = await all(
-    `SELECT s.*,
-      (SELECT COUNT(*)::int FROM site_tags st WHERE st.site_id = s.id AND st.tag_id IN (${
-        tagIds.length ? tagIds.map(() => '?').join(',') : 'SELECT NULL'
-      })) AS shared
-     FROM sites s
-     WHERE s.status = 'approved' AND s.id != ?
-     ORDER BY (CASE WHEN s.category_id = ? THEN 2 ELSE 0 END) + shared * 3 DESC, s.trending DESC
+    `SELECT * FROM (
+       SELECT s.*, ${sharedTags} AS shared_tags
+       FROM sites s
+       WHERE s.status = 'approved' AND s.id != ?
+     ) scored
+     ORDER BY (CASE WHEN scored.category_id = ? THEN 2 ELSE 0 END) + scored.shared_tags * 3 DESC,
+              scored.trending DESC
      LIMIT ?`,
     [...tagIds, site.id, site.category_id ?? -1, limit],
   )
