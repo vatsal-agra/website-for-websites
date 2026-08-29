@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Layers } from 'lucide-react'
 import { getCurrentUser } from '@/lib/session'
-import { collectionPreview, listCollections } from '@/lib/queries/collections'
+import { collectionPreviews, listCollections } from '@/lib/queries/collections'
 import { CollectionCard } from '@/components/cards'
 import { ButtonLink, EmptyState, SectionHeader } from '@/components/ui/primitives'
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Collections',
   description:
-    'Shelves assembled around an idea rather than a category — curated by the Portico editors and by readers.',
+    'Shelves assembled around an idea rather than a category — curated by the web-amble editors and by readers.',
 }
 
 export default async function CollectionsPage() {
@@ -19,15 +19,13 @@ export default async function CollectionsPage() {
   const editorial = all.filter((c) => c.is_editorial)
   const community = all.filter((c) => !c.is_editorial)
 
+  // one query for every card's preview, rather than one per card
+  const previews = await collectionPreviews(all.map((c) => c.id), 4)
   const withPreview = (list: typeof all) =>
-    Promise.all(
-      list.map(async (collection) => ({
-        collection,
-        preview: await collectionPreview(collection.id, 4),
-      })),
-    )
+    list.map((collection) => ({ collection, preview: previews.get(collection.id) ?? [] }))
 
-  const [editorialCards, communityCards] = await Promise.all([withPreview(editorial), withPreview(community)])
+  const editorialCards = withPreview(editorial)
+  const communityCards = withPreview(community)
 
   return (
     <div className="shell py-10 sm:py-14">
@@ -50,7 +48,7 @@ export default async function CollectionsPage() {
 
       {editorial.length > 0 && (
         <section className="mb-16">
-          <SectionHeader eyebrow="Portico editorial" title="From the editors" />
+          <SectionHeader eyebrow="web-amble editorial" title="From the editors" />
           <div className="stack-fade grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {editorialCards.map(({ collection, preview }) => (
               <CollectionCard key={collection.id} collection={collection} preview={preview} />

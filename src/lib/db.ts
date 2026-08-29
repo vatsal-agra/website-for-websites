@@ -1,92 +1,184 @@
-import fs from 'node:fs'
-import { pathToFileURL } from 'node:url'
-import { createClient, type Client, type InArgs, type InStatement } from '@libsql/client'
-import { env, paths } from './env'
+import postgres from 'postgres'
+import { env } from './env'
 import { SCHEMA_SQL, ALTER_STEPS } from './schema'
 
 /**
- * Portico speaks libSQL — SQLite's dialect, over either a local file or HTTP.
+ * web-amble speaks Postgres.
  *
- * Locally that is `file:./data/portico.db` and behaves exactly like SQLite.
- * In production (Netlify, or any serverless host) there is no persistent disk,
- * so the same schema and the same SQL run against a hosted libSQL database via
- * `TURSO_DATABASE_URL`. FTS5, `json_extract`, `julianday` and `power` all
- * behave identically, which is why nothing above this file had to change shape.
+ * Timestamps are stored as `YYYY-MM-DD HH:MM:SS` text rather than `timestamptz`.
+ * That looks odd for Postgres, but it is deliberate: every comparison, sort and
+ * rollup in the product works on that exact string shape, and keeping it means
+ * the application layer has one representation of time instead of two.
+ * `nowIso()` is the single place that produces it.
  */
 
 declare global {
   // eslint-disable-next-line no-var
-  var __porticoClient: Client | undefined
+  var __webAmbleSql: postgres.Sql | undefined
   // eslint-disable-next-line no-var
-  var __porticoMigrated: Promise<void> | undefined
+  var __webAmbleMigrated: Promise<void> | undefined
 }
 
-export const isRemoteDb = Boolean(env.databaseUrl && !env.databaseUrl.startsWith('file:'))
+export function sql(): postgres.Sql {
+  if (!globalThis.__webAmbleSql) {
+    if (!env.databaseUrl) {
+      throw new Error(
+        'DATABASE_URL is not set. Copy .env.example to .env.local and point it at your Postgres database.',
+      )
+    }
+    globalThis.__webAmbleSql = postgres(env.databaseUrl, {
+      // Supabase's transaction pooler does not support prepared statements
+      prepare: false,
+      max: env.dbPoolSize + 1,
+      idle_timeout: 20,
+      connect_timeout: 15,
+      onnotice: () => {},
+    })
+  }
+  return globalThis.__webAmbleSql
+}
 
 /**
- * A local database path has to become a real file URL. Building it by hand
- * breaks the moment the project lives somewhere with a space or a backslash in
- * the path, which on Windows is essentially always.
+ * The query layer is written with `?` placeholders. Rewriting them to Postgres
+ * `$n` here keeps every call site dialect-agnostic. Quoted literals are skipped
+ * so a `?` inside a string is never mistaken for a parameter.
  */
-export function localFileUrl(): string {
-  return pathToFileURL(paths.db).href
-}
+export function toPositional(query: string): string {
+  let out = ''
+  let index = 0
+  let inSingle = false
+  let inDouble = false
 
-function createDbClient(): Client {
-  if (isRemoteDb) {
-    return createClient({ url: env.databaseUrl, authToken: env.databaseAuthToken })
+  for (let i = 0; i < query.length; i++) {
+    const ch = query[i]
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle
+      out += ch
+      continue
+    }
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble
+      out += ch
+      continue
+    }
+    if (ch === '?' && !inSingle && !inDouble) {
+      out += `$${++index}`
+      continue
+    }
+    out += ch
   }
-  // local file — make sure the directory exists first
-  fs.mkdirSync(env.dataDir, { recursive: true })
-  return createClient({ url: env.databaseUrl || localFileUrl() })
-}
-
-export function client(): Client {
-  if (!globalThis.__porticoClient) globalThis.__porticoClient = createDbClient()
-  return globalThis.__porticoClient
+  return out
 }
 
 // ------------------------------------------------------------- primitives --
 
-export async function all<T = Record<string, any>>(sql: string, args: InArgs = []): Promise<T[]> {
-  await ready()
-  const result = await client().execute({ sql, args })
-  return result.rows as unknown as T[]
+/**
+ * Turn the one migration mistake people actually hit into a useful message
+ * instead of a raw `relation "sites" does not exist`.
+ */
+function explain(err: unknown): never {
+  if (err && typeof err === 'object' && (err as any).code === '42P01') {
+    throw new Error(
+      'The database has no schema yet. Run `npm run db:migrate` (or `npm run setup` to migrate and seed).',
+    )
+  }
+  throw err
 }
 
-export async function get<T = Record<string, any>>(sql: string, args: InArgs = []): Promise<T | undefined> {
-  const rows = await all<T>(sql, args)
+/**
+ * Concurrency gate.
+ *
+ * A page like the home shelf fans out ~20 queries at once. Handing all of them
+ * to the driver simultaneously overwhelms its connection assignment and some
+ * queries are never dispatched at all — the request then hangs forever with no
+ * error. Queueing here instead keeps in-flight work at exactly the pool size,
+ * which is both predictable and measurably faster than thrashing.
+ *
+ * Safe because no query is ever issued while another is awaited on the same
+ * logical path — every call site either awaits sequentially or fans out via
+ * Promise.all, never nests.
+ */
+const waiting: (() => void)[] = []
+let active = 0
+let querySeq = 0
+
+function acquire(): Promise<void> {
+  if (active < env.dbPoolSize) {
+    active++
+    return Promise.resolve()
+  }
+  return new Promise<void>((resolve) => waiting.push(resolve))
+}
+
+function release() {
+  const next = waiting.shift()
+  if (next) next()
+  else active--
+}
+
+async function execute(query: string, args: any[]): Promise<any> {
+  const text = toPositional(query)
+  await acquire()
+
+  if (!env.dbTrace) {
+    try {
+      return await sql().unsafe(text, args)
+    } finally {
+      release()
+    }
+  }
+
+  const id = ++querySeq
+  const label = query.replace(/\s+/g, ' ').trim().slice(0, 80)
+  const started = Date.now()
+  console.log(`[db ${id}] -> (${active} active, ${waiting.length} queued) ${label}`)
+  try {
+    const rows = await sql().unsafe(text, args)
+    console.log(`[db ${id}] <- ${Date.now() - started}ms ${(rows as any[]).length} rows`)
+    return rows
+  } catch (err) {
+    console.log(`[db ${id}] !! ${Date.now() - started}ms ${(err as Error).message.slice(0, 80)}`)
+    throw err
+  } finally {
+    release()
+  }
+}
+
+export async function all<T = Record<string, any>>(query: string, args: any[] = []): Promise<T[]> {
+  try {
+    const rows = await execute(query, args)
+    return rows as unknown as T[]
+  } catch (err) {
+    explain(err)
+  }
+}
+
+export async function get<T = Record<string, any>>(query: string, args: any[] = []): Promise<T | undefined> {
+  const rows = await all<T>(query, args)
   return rows[0]
 }
 
 export async function run(
-  sql: string,
-  args: InArgs = [],
-): Promise<{ rowsAffected: number; lastInsertRowid: number }> {
-  await ready()
-  const result = await client().execute({ sql, args })
-  return {
-    rowsAffected: result.rowsAffected,
-    lastInsertRowid: result.lastInsertRowid === undefined ? 0 : Number(result.lastInsertRowid),
+  query: string,
+  args: any[] = [],
+): Promise<{ rowsAffected: number; rows: any[] }> {
+  try {
+    const result = await execute(query, args)
+    return { rowsAffected: result.count ?? 0, rows: result as unknown as any[] }
+  } catch (err) {
+    explain(err)
   }
 }
 
-/** Run several statements atomically. */
-export async function batch(statements: InStatement[]): Promise<void> {
-  if (!statements.length) return
-  await ready()
-  await client().batch(statements, 'write')
-}
-
 /** Execute a multi-statement script (DDL). */
-export async function exec(sql: string): Promise<void> {
-  await client().executeMultiple(sql)
+export async function exec(query: string): Promise<void> {
+  await sql().unsafe(query).simple()
 }
 
 /** Count helper — returns 0 rather than throwing when a table is missing. */
-export async function count(sql: string, args: InArgs = []): Promise<number> {
+export async function count(query: string, args: any[] = []): Promise<number> {
   try {
-    const row = await get<{ n: number }>(sql, args)
+    const row = await get<{ n: number | string }>(query, args)
     return Number(row?.n ?? 0)
   } catch {
     return 0
@@ -95,32 +187,24 @@ export async function count(sql: string, args: InArgs = []): Promise<number> {
 
 // -------------------------------------------------------------- migration --
 
-/**
- * Talks to the client directly rather than going through `all()`. Every public
- * query awaits `ready()`, and `ready()` is awaiting this migration — routing
- * through it here would deadlock the process on the very first query.
- */
 async function columnExists(table: string, column: string): Promise<boolean> {
   try {
-    const result = await client().execute(`PRAGMA table_info(${table})`)
-    return (result.rows as unknown as { name: string }[]).some((r) => r.name === column)
+    const rows = await sql().unsafe(
+      `select 1 from information_schema.columns where table_schema = 'public' and table_name = $1 and column_name = $2`,
+      [table, column],
+    )
+    return rows.length > 0
   } catch {
     return true
   }
 }
 
 export async function migrate(): Promise<void> {
-  const db = client()
-  if (!isRemoteDb) {
-    // only meaningful for a local file; harmless to skip against a hosted db
-    await db.execute('PRAGMA journal_mode = WAL').catch(() => {})
-    await db.execute('PRAGMA foreign_keys = ON').catch(() => {})
-  }
-  await db.executeMultiple(SCHEMA_SQL)
+  await exec(SCHEMA_SQL)
   for (const step of ALTER_STEPS) {
     if (!(await columnExists(step.table, step.column))) {
       try {
-        await db.execute(step.ddl)
+        await sql().unsafe(step.ddl)
       } catch {
         /* already present in another shape — ignore */
       }
@@ -129,28 +213,50 @@ export async function migrate(): Promise<void> {
 }
 
 /**
- * Every query waits on this once per process. Serverless invocations get a cold
- * database handle, so the schema check has to be part of the request path
- * rather than something a human remembers to run.
+ * Ensure the schema exists, at most once per process.
+ *
+ * Deliberately NOT called from the query path. Migration runs ~40 DDL
+ * statements and takes ACCESS EXCLUSIVE locks; putting that on every request
+ * made each page wait seconds and made concurrent requests fight each other for
+ * locks until they hit the statement timeout. Schema changes belong at deploy
+ * time — `npm run db:migrate` — and at worker startup, not in a page render.
  */
 export function ready(): Promise<void> {
-  if (!globalThis.__porticoMigrated) {
-    globalThis.__porticoMigrated = migrate().catch((err) => {
-      globalThis.__porticoMigrated = undefined
+  if (!globalThis.__webAmbleMigrated) {
+    globalThis.__webAmbleMigrated = migrate().catch((err) => {
+      globalThis.__webAmbleMigrated = undefined
       throw err
     })
   }
-  return globalThis.__porticoMigrated
+  return globalThis.__webAmbleMigrated
+}
+
+export async function close(): Promise<void> {
+  if (globalThis.__webAmbleSql) {
+    await globalThis.__webAmbleSql.end({ timeout: 5 })
+    globalThis.__webAmbleSql = undefined
+    globalThis.__webAmbleMigrated = undefined
+  }
 }
 
 // --------------------------------------------------------------- utilities --
 
+/** The single source of the timestamp format used throughout the schema. */
 export function nowIso(): string {
   return new Date().toISOString().replace('T', ' ').slice(0, 19)
 }
 
 export function today(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+/** `YYYY-MM-DD HH:MM:SS` for a moment offset from now, for date-window queries. */
+export function isoOffset(ms: number): string {
+  return new Date(Date.now() + ms).toISOString().replace('T', ' ').slice(0, 19)
+}
+
+export function dayOffset(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 }
 
 export async function getSetting(key: string, fallback = ''): Promise<string> {

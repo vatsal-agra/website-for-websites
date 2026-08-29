@@ -1,7 +1,7 @@
 import type { Config } from '@netlify/functions'
 
 /**
- * Portico's background worker on Netlify.
+ * web-amble's background worker on Netlify.
  *
  * There is no long-running process here, so instead of the `npm run worker`
  * loop this scheduled function pokes /api/worker every five minutes. Each poke

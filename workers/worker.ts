@@ -1,11 +1,11 @@
 import { banner, colours, log } from '../scripts/_boot'
 import { env } from '../src/lib/env'
-import { isRemoteDb, ready } from '../src/lib/db'
+import { ready } from '../src/lib/db'
 import { drain, jobCounts, requeueStalled } from '../src/lib/jobs'
 import { registerAllHandlers, scheduleDueWork } from '../src/lib/handlers'
 
 /**
- * Portico's background worker.
+ * web-amble's background worker.
  *
  * It keeps the catalogue alive: polling discovery sources, ingesting candidate
  * URLs, generating cover art, re-checking known sites and re-scoring trending.
@@ -46,7 +46,7 @@ async function tick() {
 }
 
 async function main() {
-  banner('Portico worker')
+  banner('web-amble worker')
   await ready()
   registerAllHandlers()
 
@@ -56,8 +56,9 @@ async function main() {
   }
 
   const counts = await jobCounts()
+  const host = env.databaseUrl.replace(/^.*@/, '').replace(/\/.*$/, '')
   log(
-    `database ${colours.dim}${isRemoteDb ? 'remote libSQL' : env.dataDir}${colours.reset} · ` +
+    `database ${colours.dim}${host}${colours.reset} · ` +
       `tick ${env.workerTickMs}ms · ${counts.queued} job(s) waiting`,
   )
   log(`${colours.dim}Ctrl-C to stop.${colours.reset}`)

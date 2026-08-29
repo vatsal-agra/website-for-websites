@@ -13,7 +13,7 @@ export default function ErrorBoundary({
   reset: () => void
 }) {
   React.useEffect(() => {
-    console.error('Portico page error:', error)
+    console.error('web-amble page error:', error)
   }, [error])
 
   return (
@@ -40,7 +40,7 @@ export default function ErrorBoundary({
         <p className="mt-8 text-sm text-muted">
           Persistently broken?{' '}
           <Link href="/about" className="text-ink">
-            Read how Portico works
+            Read how web-amble works
           </Link>{' '}
           — it may explain what went wrong.
         </p>

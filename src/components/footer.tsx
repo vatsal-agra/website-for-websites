@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Rss } from 'lucide-react'
 import type { Category } from '@/lib/types'
-import type { PorticoStats } from '@/lib/queries/stats'
+import type { WebAmbleStats } from '@/lib/queries/stats'
 import { formatNumber } from '@/lib/utils'
 import { ThemeToggle } from './theme-toggle'
 import { Wordmark } from './wordmark'
@@ -30,15 +30,15 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: 'About',
     links: [
-      { href: '/about', label: 'What Portico is' },
+      { href: '/about', label: 'What web-amble is' },
       { href: '/about#how-it-works', label: 'How discovery works' },
-      { href: '/about#bot', label: 'About PorticoBot' },
+      { href: '/about#bot', label: 'About AmbleBot' },
       { href: '/feed.xml', label: 'RSS feed' },
     ],
   },
 ]
 
-export function Footer({ categories, stats }: { categories: Category[]; stats: PorticoStats }) {
+export function Footer({ categories, stats }: { categories: Category[]; stats: WebAmbleStats }) {
   const year = new Date().getFullYear()
 
   return (
@@ -112,7 +112,7 @@ export function Footer({ categories, stats }: { categories: Category[]; stats: P
 
         <div className="mt-12 flex flex-col-reverse items-start justify-between gap-6 border-t border-line pt-8 sm:flex-row sm:items-center">
           <p className="text-xs text-faint">
-            © {year} Portico. Sites are the property of their makers — we only point at them.
+            © {year} web-amble. Sites are the property of their makers — we only point at them.
           </p>
           <div className="flex items-center gap-3">
             <Link

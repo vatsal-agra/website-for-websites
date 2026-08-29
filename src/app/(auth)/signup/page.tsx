@@ -5,9 +5,11 @@ import { getCurrentUser } from '@/lib/session'
 import { signupAction } from '@/lib/actions/auth'
 import { AuthForm } from '../auth-form'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Create an account',
-  description: 'Create a Portico account to save sites, upvote and curate your own collections.',
+  description: 'Create a web-amble account to save sites, upvote and curate your own collections.',
 }
 
 export default async function SignupPage({
@@ -24,7 +26,7 @@ export default async function SignupPage({
       mode="signup"
       action={signupAction}
       next={next}
-      title="Join Portico"
+      title="Join web-amble"
       subtitle="Save what you find, upvote what deserves it, and publish collections of your own."
       footer={
         <p className="text-sm text-muted">

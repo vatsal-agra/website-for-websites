@@ -14,7 +14,7 @@ import { recomputeTrending, reindexSite, setSiteTags, uniqueSlug } from '../src/
 import { addToCollection, createCollection } from '../src/lib/queries/collections'
 import type { SiteAttributes } from '../src/lib/types'
 
-banner('Portico — seed')
+banner('web-amble — seed')
 
 await migrate()
 
@@ -33,7 +33,7 @@ log(`${colours.green}✓${colours.reset} ${CATEGORY_SEEDS.length} categories`)
 
 // -------------------------------------------------------------- blocklist --
 for (const entry of DEFAULT_BLOCKLIST) {
-  await run('INSERT OR IGNORE INTO blocklist (pattern, reason) VALUES (?, ?)', [entry.pattern, entry.reason])
+  await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [entry.pattern, entry.reason])
 }
 log(`${colours.green}✓${colours.reset} ${DEFAULT_BLOCKLIST.length} blocklist rules`)
 
@@ -60,7 +60,7 @@ if (!admin) {
     username: env.adminUsername,
     password: env.adminPassword,
     email: env.adminEmail,
-    displayName: 'Portico Editors',
+    displayName: 'web-amble Editors',
     role: 'admin',
   })
   admin = await findUserByUsername(created.username)
@@ -183,7 +183,7 @@ log(`${colours.green}✓${colours.reset} queued ${needThumbs.length} cover-art j
 await setSetting('seeded_at', nowIso())
 
 console.log(`
-${colours.bold}Portico is seeded.${colours.reset}
+${colours.bold}web-amble is seeded.${colours.reset}
 
   ${colours.dim}1.${colours.reset} ${colours.cyan}npm run dev${colours.reset}     ${colours.dim}— start the site on http://localhost:3000${colours.reset}
   ${colours.dim}2.${colours.reset} ${colours.cyan}npm run worker${colours.reset}  ${colours.dim}— fetch cover art and start discovering new sites${colours.reset}

@@ -4,7 +4,7 @@ import type { PublicUser, UserRole } from './types'
 
 const SCRYPT_N = 16384
 const SCRYPT_KEYLEN = 64
-export const SESSION_COOKIE = 'portico_session'
+export const SESSION_COOKIE = 'webamble_session'
 export const SESSION_DAYS = 30
 
 export function hashPassword(password: string): string {
@@ -40,7 +40,7 @@ export function toPublicUser(row: any): PublicUser {
 export const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_-]{1,22}[a-z0-9])$/
 
 const RESERVED_USERNAMES = new Set([
-  'admin', 'root', 'system', 'portico', 'api', 'about', 'submit', 'login', 'logout',
+  'admin', 'root', 'system', 'webamble', 'web-amble', 'amble', 'api', 'about', 'submit', 'login', 'logout',
   'signup', 'browse', 'search', 'site', 'sites', 'category', 'tag', 'collections',
   'shuffle', 'saved', 'settings', 'u', 'go', 'feed', 'sitemap', 'robots', 'guidelines',
 ])

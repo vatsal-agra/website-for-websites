@@ -1,9 +1,9 @@
 {
-  "name": "portico",
+  "name": "web-amble",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Portico — a storefront for the whole web. Discover, browse and submit websites.",
+  "description": "web-amble — a storefront for the whole web. Discover, browse and submit websites.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -29,6 +29,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
     "next": "^16.2.12",
+    "postgres": "^3.4.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.33.5",

@@ -1,4 +1,4 @@
-import { all, get, run, nowIso, today } from '../db'
+import { all, get, run, nowIso, today, dayOffset } from '../db'
 import type { BrowseFilters, Category, Site, SiteAttributes, SiteRow, SortKey, Tag } from '../types'
 import { slugify } from '../utils'
 
@@ -25,14 +25,50 @@ export function mapSite(row: any, extras: { category?: Category | null; tags?: T
   }
 }
 
-/** Attach categories + tags to a batch of rows in two queries. */
+/**
+ * The sixteen categories are effectively static — they only change when an
+ * editor edits the taxonomy — but `hydrate()` is called once per shelf, so a
+ * home page was fetching them eight times over the network. Cached briefly.
+ */
+let categoryCache: { at: number; byId: Map<number, Category> } | null = null
+let categoryInFlight: Promise<Map<number, Category>> | null = null
+const CATEGORY_TTL_MS = 60_000
+
+/**
+ * Single-flight: a home page hydrates five shelves at once, and without this
+ * every one of them misses the cold cache and issues its own identical query.
+ * Callers that arrive while a fetch is in progress share that one promise.
+ */
+async function categoriesById(): Promise<Map<number, Category>> {
+  if (categoryCache && Date.now() - categoryCache.at < CATEGORY_TTL_MS) return categoryCache.byId
+  if (categoryInFlight) return categoryInFlight
+
+  categoryInFlight = (async () => {
+    try {
+      const rows = await all<Category>('SELECT * FROM categories')
+      const byId = new Map(rows.map((c) => [Number(c.id), c]))
+      categoryCache = { at: Date.now(), byId }
+      return byId
+    } finally {
+      categoryInFlight = null
+    }
+  })()
+
+  return categoryInFlight
+}
+
+export function invalidateCategoryCache() {
+  categoryCache = null
+}
+
+/** Attach categories + tags to a batch of rows. */
 export async function hydrate(rows: any[]): Promise<Site[]> {
   if (!rows.length) return []
   const ids = rows.map((r) => Number(r.id))
   const placeholders = ids.map(() => '?').join(',')
 
-  const [categoryRows, tagRows] = await Promise.all([
-    all<Category>('SELECT * FROM categories'),
+  const [categories, tagRows] = await Promise.all([
+    categoriesById(),
     all<Tag & { site_id: number }>(
       `SELECT st.site_id, t.id, t.slug, t.name, t.uses
        FROM site_tags st JOIN tags t ON t.id = st.tag_id
@@ -41,8 +77,6 @@ export async function hydrate(rows: any[]): Promise<Site[]> {
       ids,
     ),
   ])
-
-  const categories = new Map(categoryRows.map((c) => [Number(c.id), c]))
   const tagsBySite = new Map<number, Tag[]>()
   for (const { site_id, ...tag } of tagRows) {
     const list = tagsBySite.get(Number(site_id)) ?? []
@@ -91,7 +125,7 @@ function orderClause(sort: SortKey, seed: number): string {
     case 'top':
       return 'ORDER BY s.votes DESC, s.trending DESC, s.id DESC'
     case 'alpha':
-      return 'ORDER BY s.title COLLATE NOCASE ASC'
+      return 'ORDER BY lower(s.title) ASC'
     case 'random':
       return `ORDER BY ((s.id * ${Math.max(1, Math.floor(seed))}) % 104729) ASC`
     case 'trending':
@@ -132,7 +166,7 @@ export async function listSites(
   }
   for (const attr of filters.attrs ?? []) {
     if (!/^[a-zA-Z]+$/.test(attr)) continue
-    where.push(`json_extract(s.attributes, '$.${attr}') = 1`)
+    where.push(`(s.attributes::jsonb ->> '${attr}') = 'true'`)
   }
   if (filters.q) {
     const ids = await searchIds(filters.q, 400)
@@ -142,7 +176,7 @@ export async function listSites(
   }
 
   const whereSql = `WHERE ${where.join(' AND ')}`
-  const totalRow = await get<{ n: number }>(`SELECT COUNT(*) AS n FROM sites s ${whereSql}`, params)
+  const totalRow = await get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM sites s ${whereSql}`, params)
   const total = Number(totalRow?.n ?? 0)
 
   const rows = await all(
@@ -164,28 +198,33 @@ export async function listSites(
 
 // ------------------------------------------------------------------- search --
 
-function escapeFts(query: string): string {
+/**
+ * Build a Postgres tsquery. The final term gets `:*` so results narrow as you
+ * type, which is what makes the command palette feel live.
+ */
+function toTsQuery(query: string): string {
   const terms = query
     .toLowerCase()
-    .replace(/["^*(){}[\]:]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0 && t.length < 40)
     .slice(0, 8)
   if (!terms.length) return ''
-  // prefix-match the final term so search feels live as you type
-  return terms.map((t, i) => (i === terms.length - 1 ? `"${t}"*` : `"${t}"`)).join(' AND ')
+  return terms.map((t, i) => (i === terms.length - 1 ? `${t}:*` : t)).join(' & ')
 }
 
 export async function searchIds(query: string, limit = 50): Promise<number[]> {
-  const match = escapeFts(query)
+  const match = toTsQuery(query)
   if (!match) return []
   try {
     const rows = await all<{ id: number }>(
-      `SELECT rowid AS id, bm25(sites_fts, 8.0, 4.0, 1.0, 6.0, 3.0) AS rank
-       FROM sites_fts WHERE sites_fts MATCH ?
-       ORDER BY rank LIMIT ?`,
-      [match, limit],
+      `SELECT id, ts_rank(search_tsv, to_tsquery('english', ?)) AS rank
+       FROM sites
+       WHERE search_tsv @@ to_tsquery('english', ?)
+       ORDER BY rank DESC, trending DESC
+       LIMIT ?`,
+      [match, match, limit],
     )
     return rows.map((r) => Number(r.id))
   } catch {
@@ -207,28 +246,37 @@ export async function searchSites(query: string, limit = 20, userId?: number | n
   return hydrate(rows.slice(0, limit))
 }
 
+/**
+ * Rebuild one site's search vector. Fields are weighted so a title match beats
+ * a description match: A=title, B=tags, C=domain, D=body text.
+ */
 export async function reindexSite(siteId: number): Promise<void> {
-  const row = await get<{ title: string; tagline: string; description: string; domain: string }>(
-    'SELECT title, tagline, description, domain FROM sites WHERE id = ?',
-    [siteId],
-  )
-  await run('DELETE FROM sites_fts WHERE rowid = ?', [siteId])
-  if (!row) return
-  const tagRows = await all<{ name: string }>(
-    'SELECT t.name FROM site_tags st JOIN tags t ON t.id = st.tag_id WHERE st.site_id = ?',
-    [siteId],
-  )
   await run(
-    'INSERT INTO sites_fts (rowid, title, tagline, description, domain, tags) VALUES (?, ?, ?, ?, ?, ?)',
-    [siteId, row.title, row.tagline, row.description, row.domain.replace(/\./g, ' '), tagRows.map((t) => t.name).join(' ')],
+    `UPDATE sites s SET search_tsv =
+       setweight(to_tsvector('english', coalesce(s.title, '')), 'A') ||
+       setweight(to_tsvector('english', coalesce((
+         SELECT string_agg(t.name, ' ') FROM site_tags st JOIN tags t ON t.id = st.tag_id
+         WHERE st.site_id = s.id
+       ), '')), 'B') ||
+       setweight(to_tsvector('english', replace(coalesce(s.domain, ''), '.', ' ')), 'C') ||
+       setweight(to_tsvector('english', coalesce(s.tagline, '') || ' ' || coalesce(s.description, '')), 'D')
+     WHERE s.id = ?`,
+    [siteId],
   )
 }
 
 export async function reindexAll(): Promise<number> {
-  await run('DELETE FROM sites_fts')
-  const ids = await all<{ id: number }>('SELECT id FROM sites')
-  for (const { id } of ids) await reindexSite(Number(id))
-  return ids.length
+  const res = await run(
+    `UPDATE sites s SET search_tsv =
+       setweight(to_tsvector('english', coalesce(s.title, '')), 'A') ||
+       setweight(to_tsvector('english', coalesce((
+         SELECT string_agg(t.name, ' ') FROM site_tags st JOIN tags t ON t.id = st.tag_id
+         WHERE st.site_id = s.id
+       ), '')), 'B') ||
+       setweight(to_tsvector('english', replace(coalesce(s.domain, ''), '.', ' ')), 'C') ||
+       setweight(to_tsvector('english', coalesce(s.tagline, '') || ' ' || coalesce(s.description, '')), 'D')`,
+  )
+  return res.rowsAffected
 }
 
 // ---------------------------------------------------------------- discovery --
@@ -237,7 +285,7 @@ export async function relatedSites(site: Site, limit = 8): Promise<Site[]> {
   const tagIds = site.tags.map((t) => Number(t.id))
   const rows = await all(
     `SELECT s.*,
-      (SELECT COUNT(*) FROM site_tags st WHERE st.site_id = s.id AND st.tag_id IN (${
+      (SELECT COUNT(*)::int FROM site_tags st WHERE st.site_id = s.id AND st.tag_id IN (${
         tagIds.length ? tagIds.map(() => '?').join(',') : 'SELECT NULL'
       })) AS shared
      FROM sites s
@@ -253,7 +301,7 @@ export async function randomSite(excludeId?: number): Promise<Site | null> {
   const row = await get(
     `SELECT s.* FROM sites s
      WHERE s.status = 'approved' AND s.id != ?
-     ORDER BY RANDOM() LIMIT 1`,
+     ORDER BY random() LIMIT 1`,
     [excludeId ?? -1],
   )
   return row ? (await hydrate([row]))[0] : null
@@ -268,9 +316,10 @@ export async function siteOfTheDay(): Promise<Site | null> {
   const pool = await all(
     `SELECT * FROM sites
      WHERE status = 'approved' AND quality >= 0.5
-       AND (featured_on IS NULL OR featured_on < date('now', '-45 days'))
+       AND (featured_on IS NULL OR featured_on < ?)
      ORDER BY quality DESC, trending DESC
      LIMIT 60`,
+    [dayOffset(-45)],
   )
   if (!pool.length) {
     const any = await get(`SELECT * FROM sites WHERE status = 'approved' ORDER BY trending DESC LIMIT 1`)
@@ -330,7 +379,7 @@ export async function hiddenGems(limit = 12, userId?: number | null): Promise<Si
   const rows = await all(
     `SELECT s.* ${VIEWER_JOIN(userId)} FROM sites s
      WHERE s.status = 'approved' AND s.quality >= 0.6 AND s.votes <= 3
-     ORDER BY s.quality DESC, RANDOM() LIMIT ?`,
+     ORDER BY s.quality DESC, random() LIMIT ?`,
     [limit],
   )
   return hydrate(rows)
@@ -341,14 +390,14 @@ export async function hiddenGems(limit = 12, userId?: number | null): Promise<Si
 export async function listCategories(withCounts = true): Promise<Category[]> {
   if (!withCounts) return all<Category>('SELECT * FROM categories ORDER BY position, name')
   return all<Category>(
-    `SELECT c.*, (SELECT COUNT(*) FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
+    `SELECT c.*, (SELECT COUNT(*)::int FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
      FROM categories c ORDER BY c.position, c.name`,
   )
 }
 
 export async function getCategory(slug: string): Promise<Category | null> {
   const row = await get<Category>(
-    `SELECT c.*, (SELECT COUNT(*) FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
+    `SELECT c.*, (SELECT COUNT(*)::int FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
      FROM categories c WHERE c.slug = ?`,
     [slug],
   )
@@ -356,10 +405,16 @@ export async function getCategory(slug: string): Promise<Category | null> {
 }
 
 export async function listTags(limit = 60): Promise<Tag[]> {
+  // Columns are listed explicitly rather than `t.*`: the tags table already has
+  // a `uses` column, and selecting both it and the computed count makes
+  // `ORDER BY uses` ambiguous.
   return all<Tag>(
-    `SELECT t.*, (SELECT COUNT(*) FROM site_tags st JOIN sites s ON s.id = st.site_id
-                  WHERE st.tag_id = t.id AND s.status = 'approved') AS uses
-     FROM tags t ORDER BY uses DESC, t.name LIMIT ?`,
+    `SELECT t.id, t.slug, t.name,
+            (SELECT COUNT(*)::int FROM site_tags st JOIN sites s ON s.id = st.site_id
+             WHERE st.tag_id = t.id AND s.status = 'approved') AS uses
+     FROM tags t
+     ORDER BY uses DESC, t.name
+     LIMIT ?`,
     [limit],
   )
 }
@@ -370,7 +425,7 @@ export async function getTag(slug: string): Promise<Tag | null> {
 
 export async function tagsForCategory(categorySlug: string, limit = 18): Promise<Tag[]> {
   return all<Tag>(
-    `SELECT t.id, t.slug, t.name, COUNT(*) AS uses
+    `SELECT t.id, t.slug, t.name, COUNT(*)::int AS uses
      FROM site_tags st
      JOIN tags t ON t.id = st.tag_id
      JOIN sites s ON s.id = st.site_id
@@ -394,10 +449,13 @@ export async function setSiteTags(siteId: number, tagNames: string[]): Promise<v
   await run('DELETE FROM site_tags WHERE site_id = ?', [siteId])
   const names = [...new Set(tagNames.map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 8)
   for (const name of names) {
-    await run('INSERT OR IGNORE INTO site_tags (site_id, tag_id) VALUES (?, ?)', [siteId, await ensureTag(name)])
+    await run('INSERT INTO site_tags (site_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING', [
+      siteId,
+      await ensureTag(name),
+    ])
   }
   await run(
-    `UPDATE tags SET uses = (SELECT COUNT(*) FROM site_tags st WHERE st.tag_id = tags.id)
+    `UPDATE tags SET uses = (SELECT COUNT(*)::int FROM site_tags st WHERE st.tag_id = tags.id)
      WHERE id IN (SELECT tag_id FROM site_tags WHERE site_id = ?)`,
     [siteId],
   )
@@ -436,7 +494,7 @@ export async function toggleVote(userId: number, siteId: number): Promise<{ vote
       [siteId, today()],
     )
   }
-  const row = await get<{ n: number }>('SELECT COUNT(*) AS n FROM votes WHERE site_id = ?', [siteId])
+  const row = await get<{ n: number }>('SELECT COUNT(*)::int AS n FROM votes WHERE site_id = ?', [siteId])
   const votes = Number(row?.n ?? 0)
   await run('UPDATE sites SET votes = ? WHERE id = ?', [votes, siteId])
   await updateTrendingFor(siteId)
@@ -484,9 +542,20 @@ export async function submissionsByUser(userId: number, limit = 100): Promise<Si
  * A quality term keeps good sites visible until real engagement arrives, and any
  * genuine voting immediately dominates the numerator.
  */
+/**
+ * Columns are qualified with `sites.` because a table named `votes` also
+ * exists — an unqualified `votes` here is ambiguous to Postgres.
+ */
 export const TRENDING_SQL = `
-  (votes * 5.0 + clicks * 1.5 + views * 0.2 + quality * 3.0)
-  / POWER((julianday('now') - julianday(COALESCE(published_at, created_at))) + 3.0, 0.3)
+  (sites.votes * 5.0 + sites.clicks * 1.5 + sites.views * 0.2 + sites.quality * 3.0)
+  / POWER(
+      GREATEST(
+        EXTRACT(EPOCH FROM ((now() at time zone 'utc')
+          - COALESCE(sites.published_at, sites.created_at)::timestamp)) / 86400.0,
+        0
+      ) + 3.0,
+      0.3
+    )
 `
 
 export async function recomputeTrending(): Promise<number> {
@@ -539,5 +608,4 @@ export async function setStatus(id: number, status: string, reason = ''): Promis
 
 export async function deleteSite(id: number): Promise<void> {
   await run('DELETE FROM sites WHERE id = ?', [id])
-  await run('DELETE FROM sites_fts WHERE rowid = ?', [id])
 }

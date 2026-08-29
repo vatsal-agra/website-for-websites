@@ -4,7 +4,7 @@ import './globals.css'
 import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/session'
 import { listCategories } from '@/lib/queries/sites'
-import { getStats } from '@/lib/queries/stats'
+import { EMPTY_STATS, getStats } from '@/lib/queries/stats'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { ThemeScript } from '@/components/theme-toggle'
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: `%s · ${env.siteName}`,
   },
   description:
-    'Portico is a directory of websites worth knowing about. Browse by category, follow curated collections, or hit shuffle and land somewhere you did not expect.',
+    'web-amble is a directory of websites worth knowing about. Browse by category, follow curated collections, or hit shuffle and land somewhere you did not expect.',
   keywords: ['website directory', 'discover websites', 'web curation', 'indie web', 'useful websites'],
   openGraph: {
     type: 'website',
@@ -62,12 +62,22 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
+/**
+ * The chrome renders on every page, so its data must never be able to take a
+ * page — or a build — down. A missing footer stat is cosmetic; a throw here is
+ * a blank site.
+ */
+async function chromeData() {
+  try {
+    const [user, categories, stats] = await Promise.all([getCurrentUser(), listCategories(), getStats()])
+    return { user, categories, stats }
+  } catch {
+    return { user: null, categories: [] as Awaited<ReturnType<typeof listCategories>>, stats: EMPTY_STATS }
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, categories, stats] = await Promise.all([
-    getCurrentUser(),
-    Promise.resolve(await listCategories()),
-    Promise.resolve(await getStats()),
-  ])
+  const { user, categories, stats } = await chromeData()
 
   return (
     <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>

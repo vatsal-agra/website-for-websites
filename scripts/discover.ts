@@ -14,7 +14,7 @@ const args = process.argv.slice(2)
 const jobsIndex = args.indexOf('--jobs')
 const maxJobs = jobsIndex >= 0 ? Number(args[jobsIndex + 1]) || 30 : 30
 
-banner('Portico — discover')
+banner('web-amble — discover')
 
 await ready()
 registerAllHandlers()

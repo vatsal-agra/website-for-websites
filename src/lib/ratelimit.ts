@@ -21,14 +21,16 @@ export async function rateLimit(
   const windowStart = Math.floor(now / (windowSeconds * 1000)) * windowSeconds * 1000
   const windowAt = new Date(windowStart).toISOString().replace('T', ' ').slice(0, 19)
 
-  const row = await get<{ count: number }>(
-    `INSERT INTO rate_limits (bucket, subject, window_at, count)
+  // the column is `hits` rather than `count` so it never collides with the
+  // aggregate function inside the UPDATE clause
+  const row = await get<{ hits: number }>(
+    `INSERT INTO rate_limits (bucket, subject, window_at, hits)
      VALUES (?, ?, ?, 1)
-     ON CONFLICT(bucket, subject, window_at) DO UPDATE SET count = count + 1
-     RETURNING count`,
+     ON CONFLICT (bucket, subject, window_at) DO UPDATE SET hits = rate_limits.hits + 1
+     RETURNING hits`,
     [bucket, subject, windowAt],
   )
-  const used = Number(row?.count ?? 1)
+  const used = Number(row?.hits ?? 1)
 
   const retryAfterSeconds = Math.max(1, Math.ceil((windowStart + windowSeconds * 1000 - now) / 1000))
 

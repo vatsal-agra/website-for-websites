@@ -12,7 +12,7 @@ import { enqueue, jobCounts } from '../src/lib/jobs'
 
 const everything = process.argv.includes('--all')
 
-banner('Portico — rescore')
+banner('web-amble — rescore')
 await ready()
 
 const rows = await all<{ id: number; slug: string }>(

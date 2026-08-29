@@ -3,7 +3,7 @@ import type { PageMetadata } from './metadata'
 import type { NormalizedUrl } from './url'
 
 /**
- * Portico indexes the whole open web, so the safety net is deliberately narrow:
+ * web-amble indexes the whole open web, so the safety net is deliberately narrow:
  * it blocks adult content, malware/piracy, gambling and obvious scam patterns,
  * and otherwise gets out of the way.
  */

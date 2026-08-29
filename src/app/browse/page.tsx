@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Browse every site',
   description:
-    'The whole Portico catalogue. Filter by category, tag or attribute, sort by trending, newest or top rated.',
+    'The whole web-amble catalogue. Filter by category, tag or attribute, sort by trending, newest or top rated.',
 }
 
 export default async function BrowsePage({
@@ -51,7 +51,7 @@ export default async function BrowsePage({
         <p className="mt-3 max-w-prose text-base leading-relaxed text-muted">
           {activeCategory
             ? activeCategory.description
-            : 'Everything in Portico, filterable and sortable. Nothing here is sponsored — the order is decided by votes, clicks, quality and how recently we found it.'}
+            : 'Everything in web-amble, filterable and sortable. Nothing here is sponsored — the order is decided by votes, clicks, quality and how recently we found it.'}
         </p>
       </header>
 

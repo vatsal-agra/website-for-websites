@@ -1,9 +1,9 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ---------------------------------------------------------------- tokens -- */
-/* Portico's chrome is deliberately near-monochrome. All of the colour in the
+/* web-amble's chrome is deliberately near-monochrome. All of the colour in the
    product comes from the websites themselves - their cover art and accent
    hues. The interface is the gallery wall, not the painting. */
 

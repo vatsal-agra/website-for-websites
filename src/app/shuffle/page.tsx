@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Shuffle',
-  description: 'One website at random from the Portico catalogue. Press space for another.',
+  description: 'One website at random from the web-amble catalogue. Press space for another.',
   robots: { index: false, follow: true },
 }
 

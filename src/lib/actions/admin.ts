@@ -70,7 +70,7 @@ export async function deleteSiteAction(formData: FormData) {
     | undefined
 
   if (formData.get('blocklist') === 'on' && site) {
-    await run('INSERT OR IGNORE INTO blocklist (pattern, reason) VALUES (?, ?)', [
+    await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [
       site.domain,
       `removed by @${admin.username}`,
     ])
@@ -280,7 +280,7 @@ export async function addBlocklistAction(_prev: AdminState, formData: FormData):
       .replace(/\/.*$/, '')
     if (!pattern.includes('.')) return { error: 'Enter a hostname, e.g. spam.example.' }
 
-    await run('INSERT OR IGNORE INTO blocklist (pattern, reason) VALUES (?, ?)', [
+    await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [
       pattern,
       String(formData.get('reason') ?? '').slice(0, 200),
     ])

@@ -5,6 +5,8 @@ import { getCurrentUser } from '@/lib/session'
 import { loginAction } from '@/lib/actions/auth'
 import { AuthForm } from '../auth-form'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Sign in',
   description: 'Sign in to save sites, upvote and build your own collections.',

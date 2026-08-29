@@ -24,13 +24,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const site = await getSiteBySlug(slug)
   if (!site) return { title: 'Site not found' }
 
-  const description = site.tagline || site.description || `${site.title} — catalogued on Portico.`
+  const description = site.tagline || site.description || `${site.title} — catalogued on web-amble.`
   return {
     title: site.title,
     description,
     alternates: { canonical: `/site/${site.slug}` },
     openGraph: {
-      title: `${site.title} · Portico`,
+      title: `${site.title} · web-amble`,
       description,
       url: `${env.siteUrl}/site/${site.slug}`,
       type: 'article',
@@ -198,7 +198,7 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
                 {site.thumb_source === 'og'
                   ? 'Cover image published by the site'
                   : site.thumb_source === 'screenshot'
-                    ? 'Screenshot captured by PorticoBot'
+                    ? 'Screenshot captured by AmbleBot'
                     : 'Generated artwork — this site publishes no cover image'}
               </p>
             </div>

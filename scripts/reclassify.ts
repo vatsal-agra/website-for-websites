@@ -18,7 +18,7 @@ import { enqueue, jobCounts } from '../src/lib/jobs'
 const limitIndex = process.argv.indexOf('--limit')
 const limit = limitIndex >= 0 ? Number(process.argv[limitIndex + 1]) || 0 : 0
 
-banner('Portico — reclassify')
+banner('web-amble — reclassify')
 await ready()
 
 const sites = await all<{ id: number; title: string }>(
@@ -39,9 +39,9 @@ for (const site of sites) {
 }
 
 const locked = Number(
-  (await get<{ n: number }>(`SELECT COUNT(*) n FROM sites WHERE category_locked = 1`))?.n ?? 0,
+  (await get<{ n: number }>(`SELECT COUNT(*)::int n FROM sites WHERE category_locked = 1`))?.n ?? 0,
 )
-const seeded = Number((await get<{ n: number }>(`SELECT COUNT(*) n FROM sites WHERE source = 'seed'`))?.n ?? 0)
+const seeded = Number((await get<{ n: number }>(`SELECT COUNT(*)::int n FROM sites WHERE source = 'seed'`))?.n ?? 0)
 const counts = await jobCounts()
 
 log(`${colours.green}✓${colours.reset} queued ${queued} re-crawl(s)`)

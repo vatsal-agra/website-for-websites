@@ -106,7 +106,7 @@ export async function addSiteToCollectionAction(
     const { collection } = await ownedCollection(id)
 
     const raw = String(formData.get('site') ?? '').trim()
-    if (!raw) return { error: 'Paste a Portico site link or slug.' }
+    if (!raw) return { error: 'Paste a web-amble site link or slug.' }
 
     // accept a full /site/<slug> URL, a bare slug, or the site's own domain
     const slug = raw.replace(/^https?:\/\/[^/]+/, '').replace(/^\/?site\//, '').replace(/[/?#].*$/, '').trim()

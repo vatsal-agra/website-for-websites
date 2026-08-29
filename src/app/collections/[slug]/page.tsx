@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/session'
-import { collectionSites, getCollection, listCollections, collectionPreview } from '@/lib/queries/collections'
+import { collectionSites, getCollection, listCollections, collectionPreviews } from '@/lib/queries/collections'
 import { formatDate, pluralize } from '@/lib/utils'
 import { SiteCard } from '@/components/site/site-card'
 import { CollectionCard } from '@/components/cards'
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: collection.subtitle || collection.description,
     alternates: { canonical: `/collections/${collection.slug}` },
     openGraph: {
-      title: `${collection.title} · Portico`,
+      title: `${collection.title} · web-amble`,
       description: collection.subtitle || collection.description,
       url: `${env.siteUrl}/collections/${collection.slug}`,
     },
@@ -37,11 +37,13 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   const isOwner = Boolean(user && (collection.curator_id === user.id || user.role === 'admin'))
   if (!collection.is_public && !isOwner) notFound()
 
-  const sites = await collectionSites(collection.id, user?.id)
-  const others = (await listCollections({ limit: 7 })).filter((c) => c.id !== collection.id).slice(0, 3)
-  const otherCards = await Promise.all(
-    others.map(async (other) => ({ other, preview: await collectionPreview(other.id, 4) })),
-  )
+  const [sites, all] = await Promise.all([
+    collectionSites(collection.id, user?.id),
+    listCollections({ limit: 7 }),
+  ])
+  const others = all.filter((c) => c.id !== collection.id).slice(0, 3)
+  const previews = await collectionPreviews(others.map((c) => c.id), 4)
+  const otherCards = others.map((other) => ({ other, preview: previews.get(other.id) ?? [] }))
 
   return (
     <div>
@@ -57,7 +59,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
               Collections
             </Link>
             {' · '}
-            {collection.is_editorial ? 'Portico editorial' : `curated by @${collection.curator?.username ?? 'someone'}`}
+            {collection.is_editorial ? 'web-amble editorial' : `curated by @${collection.curator?.username ?? 'someone'}`}
             {!collection.is_public && ' · private'}
           </p>
           <h1 className="max-w-3xl font-display text-display-sm">{collection.title}</h1>

@@ -19,7 +19,7 @@ const BASE_SELECT = `
   SELECT c.*,
     u.username AS curator_username,
     u.display_name AS curator_display_name,
-    (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.id) AS count
+    (SELECT COUNT(*)::int FROM collection_items ci WHERE ci.collection_id = c.id) AS count
   FROM collections c
   LEFT JOIN users u ON u.id = c.curator_id
 `
@@ -83,7 +83,7 @@ export async function collectionsContaining(siteId: number, limit = 6): Promise<
   return rows.map((r) => ({ ...r, curator: mapCurator(r) })) as Collection[]
 }
 
-/** Preview thumbnails for collection cards. */
+/** Preview thumbnails for a single collection card. */
 export async function collectionPreview(collectionId: number, limit = 4): Promise<Site[]> {
   const rows = await all(
     `SELECT s.* FROM collection_items ci JOIN sites s ON s.id = ci.site_id
@@ -92,6 +92,42 @@ export async function collectionPreview(collectionId: number, limit = 4): Promis
     [collectionId, limit],
   )
   return hydrate(rows)
+}
+
+/**
+ * Previews for many collections at once.
+ *
+ * A grid of collection cards used to call `collectionPreview` per card, so a
+ * page with ten collections fired thirty queries and opened a burst of
+ * connections. One windowed query plus one hydrate does the same work.
+ */
+export async function collectionPreviews(
+  collectionIds: number[],
+  limit = 4,
+): Promise<Map<number, Site[]>> {
+  const out = new Map<number, Site[]>()
+  if (!collectionIds.length) return out
+
+  const placeholders = collectionIds.map(() => '?').join(',')
+  const rows = await all<any>(
+    `SELECT * FROM (
+       SELECT s.*, ci.collection_id AS __collection_id,
+              row_number() OVER (PARTITION BY ci.collection_id ORDER BY ci.position ASC) AS __rn
+       FROM collection_items ci
+       JOIN sites s ON s.id = ci.site_id
+       WHERE ci.collection_id IN (${placeholders}) AND s.status = 'approved'
+     ) ranked
+     WHERE __rn <= ?`,
+    [...collectionIds, limit],
+  )
+
+  const sites = await hydrate(rows)
+  for (const id of collectionIds) out.set(id, [])
+  sites.forEach((site, i) => {
+    const key = Number(rows[i].__collection_id)
+    out.get(key)?.push(site)
+  })
+  return out
 }
 
 export async function uniqueCollectionSlug(title: string, excludeId?: number): Promise<string> {

@@ -39,7 +39,7 @@ export async function GET() {
     <description>Websites recently added to the ${escapeXml(env.siteName)} catalogue.</description>
     <language>en</language>
     <lastBuildDate>${new Date(updated.replace(' ', 'T') + 'Z').toUTCString()}</lastBuildDate>
-    <generator>Portico</generator>
+    <generator>web-amble</generator>
 ${items}
   </channel>
 </rss>`

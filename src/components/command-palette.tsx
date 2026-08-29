@@ -142,7 +142,7 @@ export function CommandPalette() {
       <button
         onClick={() => setOpen(true)}
         className="group flex h-9 items-center gap-2 rounded-full border border-line bg-surface pl-3 pr-2 text-sm text-faint transition-colors hover:border-line-strong hover:text-muted md:w-56 lg:w-72"
-        aria-label="Search Portico"
+        aria-label="Search web-amble"
       >
         <Search className="h-3.5 w-3.5 shrink-0" />
         <span className="hidden min-w-0 flex-1 truncate whitespace-nowrap text-left md:inline">

@@ -277,7 +277,7 @@ export function ReportButton({ slug }: { slug: string }) {
               <form onSubmit={submit}>
                 <h2 className="font-display text-xl">Report a problem</h2>
                 <p className="mt-1 text-sm text-muted">
-                  Portico is maintained by hand. Telling us what is wrong genuinely helps.
+                  web-amble is maintained by hand. Telling us what is wrong genuinely helps.
                 </p>
 
                 <fieldset className="mt-5 space-y-2">

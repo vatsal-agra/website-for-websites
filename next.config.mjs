@@ -5,7 +5,7 @@ const nextConfig = {
   // workspace root several directories above the project and watch far too much.
   turbopack: { root: import.meta.dirname },
   // native / heavy node modules must not be bundled by the server compiler
-  serverExternalPackages: ['sharp', '@libsql/client', '@netlify/blobs'],
+  serverExternalPackages: ['sharp', 'postgres', '@netlify/blobs'],
   poweredByHeader: false,
   images: {
     // thumbnails are generated locally and served pre-optimised from /api/thumb

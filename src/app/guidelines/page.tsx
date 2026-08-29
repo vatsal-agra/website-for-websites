@@ -5,7 +5,7 @@ import { ButtonLink, Prose } from '@/components/ui/primitives'
 
 export const metadata: Metadata = {
   title: 'Listing guidelines',
-  description: 'What gets listed on Portico, what does not, and how to appeal a decision.',
+  description: 'What gets listed on web-amble, what does not, and how to appeal a decision.',
 }
 
 const YES = [
@@ -37,7 +37,7 @@ export default function GuidelinesPage() {
         <p className="eyebrow mb-3">Guidelines</p>
         <h1 className="font-display text-display-sm">What gets listed</h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
-          Portico aims to be broad. The test is not “is this important?” — it is “would somebody be glad they
+          web-amble aims to be broad. The test is not “is this important?” — it is “would somebody be glad they
           found this?” A one-page site about a single obscure hobby passes that test. A twelve-page affiliate
           funnel does not.
         </p>
@@ -104,7 +104,7 @@ export default function GuidelinesPage() {
         <p>
           If you own a site and want it delisted, report it and choose “I own this site”. We remove it and add the
           domain to a permanent blocklist so the crawler does not pick it up again. No justification needed. You
-          can also block <code>PorticoBot</code> in <code>robots.txt</code>, which prevents it being found in the
+          can also block <code>AmbleBot</code> in <code>robots.txt</code>, which prevents it being found in the
           first place — see <Link href="/about#bot">about the bot</Link>.
         </p>
 

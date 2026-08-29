@@ -1,4 +1,4 @@
-import { all, audit, get, run, nowIso } from './db'
+import { all, audit, dayOffset, get, isoOffset, run, nowIso } from './db'
 import { enqueue, registerHandler, requeueStalled } from './jobs'
 import { drainCandidates, ingestUrl, refreshSite } from './ingest'
 import { buildThumbnail, deleteThumb } from './thumbs'
@@ -111,15 +111,17 @@ export function registerAllHandlers() {
   })
 
   registerHandler('maintenance.cleanup', async () => {
+    const day = 86_400_000
     const sessions = await pruneSessions()
     const stalled = await requeueStalled()
-    const jobs = (await run(`DELETE FROM jobs WHERE status = 'done' AND finished_at < datetime('now','-3 days')`))
-      .rowsAffected
-    const candidates = (
-      await run(`DELETE FROM candidates WHERE status != 'queued' AND created_at < datetime('now','-30 days')`)
+    const jobs = (
+      await run(`DELETE FROM jobs WHERE status = 'done' AND finished_at < ?`, [isoOffset(-3 * day)])
     ).rowsAffected
-    const stats = (await run(`DELETE FROM site_stats WHERE day < date('now','-120 days')`)).rowsAffected
-    const audits = (await run(`DELETE FROM audit_log WHERE created_at < datetime('now','-90 days')`)).rowsAffected
+    const candidates = (
+      await run(`DELETE FROM candidates WHERE status != 'queued' AND created_at < ?`, [isoOffset(-30 * day)])
+    ).rowsAffected
+    const stats = (await run(`DELETE FROM site_stats WHERE day < ?`, [dayOffset(-120)])).rowsAffected
+    const audits = (await run(`DELETE FROM audit_log WHERE created_at < ?`, [isoOffset(-90 * day)])).rowsAffected
     return { sessions, stalled, jobs, candidates, stats, audits }
   })
 

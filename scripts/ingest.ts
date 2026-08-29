@@ -13,7 +13,7 @@ const args = process.argv.slice(2)
 const approve = args.includes('--approve')
 const urls = args.filter((a) => !a.startsWith('--'))
 
-banner('Portico — ingest')
+banner('web-amble — ingest')
 
 if (!urls.length) {
   console.log(`  usage: ${colours.cyan}npm run ingest -- <url> [<url>…] [--approve]${colours.reset}\n`)

@@ -22,7 +22,7 @@ import { truncate } from '../src/lib/utils'
 
 const prune = process.argv.includes('--prune')
 
-banner('Portico — repair')
+banner('web-amble — repair')
 await ready()
 
 // --------------------------------------------- honest founding timestamps --
@@ -41,11 +41,11 @@ if (backdated.rowsAffected) {
 }
 
 // ------------------------------------------------------- honest counters --
-// Likewise, an early seeder invented vote counts. Portico only ever shows real
+// Likewise, an early seeder invented vote counts. web-amble only ever shows real
 // numbers, so any counter that cannot be traced to a real interaction is reset.
 const realVotes = await run(
-  `UPDATE sites SET votes = (SELECT COUNT(*) FROM votes v WHERE v.site_id = sites.id)
-   WHERE votes != (SELECT COUNT(*) FROM votes v WHERE v.site_id = sites.id)`,
+  `UPDATE sites SET votes = (SELECT COUNT(*)::int FROM votes v WHERE v.site_id = sites.id)
+   WHERE votes != (SELECT COUNT(*)::int FROM votes v WHERE v.site_id = sites.id)`,
 )
 if (realVotes.rowsAffected) {
   log(`${colours.yellow}corrected${colours.reset} ${realVotes.rowsAffected} fabricated vote count(s)`)

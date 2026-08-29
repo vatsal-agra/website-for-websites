@@ -10,7 +10,7 @@ import { env, paths } from './env'
  * never need to know which is in use.
  */
 
-const STORE_NAME = 'portico-covers'
+const STORE_NAME = 'webamble-covers'
 
 /** Only ever a flat filename — never a path. */
 export function safeKey(key: string): string {

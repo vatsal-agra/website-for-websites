@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 type Theme = 'light' | 'dark' | 'system'
 
-const STORAGE_KEY = 'portico-theme'
+const STORAGE_KEY = 'webamble-theme'
 
 function apply(theme: Theme) {
   const root = document.documentElement

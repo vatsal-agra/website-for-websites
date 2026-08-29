@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Submit a site',
   description:
-    'Know a website that deserves to be found? Add it to Portico. We read the page, work out what it is, and put it on the right shelf.',
+    'Know a website that deserves to be found? Add it to web-amble. We read the page, work out what it is, and put it on the right shelf.',
 }
 
 const STEPS = [
@@ -20,7 +20,7 @@ const STEPS = [
   },
   {
     title: 'We read the page',
-    body: 'PorticoBot fetches it once, respecting robots.txt, and pulls out the title, description, language and cover image.',
+    body: 'AmbleBot fetches it once, respecting robots.txt, and pulls out the title, description, language and cover image.',
   },
   {
     title: 'It gets classified',
@@ -48,7 +48,7 @@ export default async function SubmitPage({
           <p className="eyebrow mb-3">Add to the catalogue</p>
           <h1 className="font-display text-display-sm">Know a site we are missing?</h1>
           <p className="mt-4 max-w-prose text-base leading-relaxed text-muted">
-            Portico finds most of its sites on its own, but the best entries come from people who already love
+            web-amble finds most of its sites on its own, but the best entries come from people who already love
             them. There is no fee, no listing tier and no way to buy a better position.
           </p>
 

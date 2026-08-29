@@ -30,7 +30,7 @@ export default async function ReportsPage({
        WHERE r.status = ? ORDER BY r.created_at DESC LIMIT 100`,
       [status],
     ),
-    all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM reports GROUP BY status'),
+    all<{ status: string; n: number }>('SELECT status, COUNT(*)::int AS n FROM reports GROUP BY status'),
   ])
 
   const counts = Object.fromEntries(countRows.map((r) => [r.status, Number(r.n)]))

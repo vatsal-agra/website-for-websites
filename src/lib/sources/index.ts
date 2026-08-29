@@ -1,4 +1,4 @@
-import { all, get, run, nowIso } from '../db'
+import { all, get, isoOffset, run, nowIso } from '../db'
 import { enqueue } from '../jobs'
 import { drainCandidates } from '../ingest'
 import type { SourceRow } from '../types'
@@ -20,10 +20,10 @@ async function runLinkGraph(config: { batch?: number }): Promise<SourceResult> {
   const rows = await all<{ id: number; slug: string }>(
     `SELECT id, slug FROM sites
      WHERE status = 'approved' AND quality >= 0.55
-       AND (checked_at IS NULL OR checked_at < datetime('now', '-7 days'))
+       AND (checked_at IS NULL OR checked_at < ?)
      ORDER BY COALESCE(checked_at, '1970-01-01') ASC, trending DESC
      LIMIT ?`,
-    [batch],
+    [isoOffset(-7 * 86_400_000), batch],
   )
 
   for (const row of rows) {
@@ -70,7 +70,10 @@ export async function dueSources(): Promise<SourceRow[]> {
   return all<SourceRow>(
     `SELECT * FROM sources
      WHERE enabled = 1
-       AND (last_run_at IS NULL OR datetime(last_run_at, '+' || interval_min || ' minutes') <= datetime('now'))`,
+       AND (
+         last_run_at IS NULL
+         OR (last_run_at::timestamp + (interval_min || ' minutes')::interval) <= (now() at time zone 'utc')
+       )`,
   )
 }
 

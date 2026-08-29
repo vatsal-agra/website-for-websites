@@ -19,8 +19,8 @@ export async function generateMetadata({
   return {
     title: term ? `“${term}”` : 'Search',
     description: term
-      ? `Websites in the Portico catalogue matching “${term}”.`
-      : 'Search the Portico catalogue of websites.',
+      ? `Websites in the web-amble catalogue matching “${term}”.`
+      : 'Search the web-amble catalogue of websites.',
     robots: { index: false, follow: true },
   }
 }
@@ -83,7 +83,7 @@ export default async function SearchPage({
         <EmptyState
           icon={<SearchX className="h-8 w-8" />}
           title={`Nothing matched “${term}”`}
-          description="Portico only indexes whole websites, not individual pages — so try a broader term, or tell us about the site we are missing."
+          description="web-amble only indexes whole websites, not individual pages — so try a broader term, or tell us about the site we are missing."
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <ButtonLink href={`/submit?url=${encodeURIComponent(term)}`} variant="primary">

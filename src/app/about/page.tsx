@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'About',
   description:
-    'What Portico is, how sites get found, how they are ranked, and how to keep your site out of the catalogue.',
+    'What web-amble is, how sites get found, how they are ranked, and how to keep your site out of the catalogue.',
 }
 
 export default async function AboutPage() {
@@ -23,7 +23,7 @@ export default async function AboutPage() {
         <h1 className="font-display text-display-sm">A storefront for the whole web</h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
           App stores gave software a place to be browsed. Websites never got one. Search engines are excellent
-          when you already know what you want, and useless when you do not. Portico exists for the second case.
+          when you already know what you want, and useless when you do not. web-amble exists for the second case.
         </p>
       </header>
 
@@ -97,21 +97,21 @@ export default async function AboutPage() {
 
           <h2>What gets refused</h2>
           <p>
-            Portico is a directory of the open web, so the filter is narrow on purpose: no adult content, no
+            web-amble is a directory of the open web, so the filter is narrow on purpose: no adult content, no
             gambling, no piracy or malware, no scams. Beyond that we decline things that are not really websites —
             social profiles, app store pages, link-in-bio pages — and things nobody can actually read, like sites
             hidden entirely behind a login. The full list is in the{' '}
             <Link href="/guidelines">listing guidelines</Link>.
           </p>
 
-          <h2 id="bot">About PorticoBot</h2>
+          <h2 id="bot">About AmbleBot</h2>
           <p>
             The crawler identifies itself as <code>{env.crawlerUserAgent.split(' ')[0]}</code>. It requests a
             single page per site, obeys <code>robots.txt</code> including wildcards, and never follows forms or
             logs in anywhere. To keep your site out entirely, add this to your <code>robots.txt</code>:
           </p>
           <pre className="overflow-x-auto rounded-xl border border-line bg-raised p-4 font-mono text-xs">
-{`User-agent: PorticoBot
+{`User-agent: AmbleBot
 Disallow: /`}
           </pre>
           <p>
@@ -140,7 +140,7 @@ Disallow: /`}
               ))}
             </ul>
             <p className="mt-4 text-xs leading-relaxed text-faint">
-              “Seed” entries are the founding set, catalogued by hand when Portico was built.
+              “Seed” entries are the founding set, catalogued by hand when web-amble was built.
             </p>
           </div>
 

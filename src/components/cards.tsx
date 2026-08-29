@@ -89,7 +89,7 @@ export function CollectionCard({
         <h3 className="font-display text-lg leading-tight tracking-tight">{collection.title}</h3>
         <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{collection.subtitle}</p>
         <p className="mt-auto pt-4 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
-          {collection.is_editorial ? 'Portico editorial' : `by ${collection.curator?.username ?? 'a reader'}`}
+          {collection.is_editorial ? 'web-amble editorial' : `by ${collection.curator?.username ?? 'a reader'}`}
         </p>
       </div>
     </Link>

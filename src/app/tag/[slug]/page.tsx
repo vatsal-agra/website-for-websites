@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!tag) return { title: 'Tag not found' }
   return {
     title: `#${tag.name}`,
-    description: `Websites tagged “${tag.name}” in the Portico catalogue.`,
+    description: `Websites tagged “${tag.name}” in the web-amble catalogue.`,
     alternates: { canonical: `/tag/${tag.slug}` },
   }
 }

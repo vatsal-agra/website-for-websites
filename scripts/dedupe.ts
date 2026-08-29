@@ -19,7 +19,7 @@ import { recomputeTrending } from '../src/lib/queries/sites'
 
 const dry = process.argv.includes('--dry')
 
-banner(`Portico — dedupe${dry ? ' (dry run)' : ''}`)
+banner(`web-amble — dedupe${dry ? ' (dry run)' : ''}`)
 await ready()
 
 interface Row {

@@ -37,11 +37,11 @@ async function categoryIdFor(slug: string): Promise<number | null> {
 export async function rootAlreadyListed(root: string, excludeId?: number): Promise<boolean> {
   const row = await get(
     `SELECT 1 AS x FROM sites
-     WHERE (domain = ?1 OR domain LIKE '%.' || ?1)
+     WHERE (domain = ? OR domain LIKE '%.' || ?)
        AND status IN ('approved','pending')
-       AND id != ?2
+       AND id != ?
      LIMIT 1`,
-    [root, excludeId ?? -1],
+    [root, root, excludeId ?? -1],
   )
   return Boolean(row)
 }
@@ -66,8 +66,8 @@ export async function enqueueCandidates(
     if (await rootAlreadyListed(n.root)) continue
 
     const res = await run(
-      `INSERT OR IGNORE INTO candidates (url, url_key, source, source_ref, found_from, weight)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO candidates (url, url_key, source, source_ref, found_from, weight)
+       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (url_key) DO NOTHING`,
       [n.href, n.key, opts.source, opts.sourceRef ?? null, opts.foundFrom, opts.weight ?? 1],
     )
     if (res.rowsAffected) added++
@@ -95,7 +95,7 @@ export async function drainCandidates(limit = 20): Promise<number> {
 }
 
 /**
- * The heart of Portico: turn a bare URL into a catalogued site.
+ * The heart of web-amble: turn a bare URL into a catalogued site.
  */
 export async function ingestUrl(input: IngestInput): Promise<IngestOutcome> {
   const normalized = normalizeUrl(input.url)

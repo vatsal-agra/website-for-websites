@@ -1,11 +1,11 @@
-# Portico
+# web-amble
 
 **A storefront for the whole web.**
 
 App stores gave software a place to be browsed. Websites never got one. Search engines are excellent
-when you already know what you want and useless when you do not — Portico exists for the second case.
+when you already know what you want and useless when you do not — web-amble exists for the second case.
 
-People publish their site's URL to Portico, or Portico finds it on its own. Each entry gets a cover, a
+People publish their site's URL to web-amble, or web-amble finds it on its own. Each entry gets a cover, a
 one-line description, a category, tags and a quality score. Readers browse the shelves, follow curated
 collections, search, or press **Shuffle** and land somewhere they would never have searched for.
 
@@ -28,7 +28,7 @@ npm run worker
 The worker fetches cover art, polls discovery sources, ingests new sites, re-checks old ones and
 recomputes trending. Without it the site works fine — it just stops growing.
 
-Admin console at **/admin**. Default credentials are in `.env.local` (`admin` / `portico-admin`).
+Admin console at **/admin**. Default credentials are in `.env.local` (`admin` / `webamble-admin`).
 Change them before putting this anywhere public.
 
 ---
@@ -47,7 +47,7 @@ Every URL — submitted or discovered — goes through the same path:
 | **Parse** | Title, description, og:image, favicon, feeds, language, outbound links, ad/paywall/parked signals | `src/lib/metadata.ts` |
 | **Classify** | Weighted lexicon picks 1 of 16 categories and up to 6 tags from a fixed vocabulary | `src/lib/classify.ts` |
 | **Score** | Quality 0–1 from page evidence: description, viewport, https, ad networks, word count, response time | `src/lib/classify.ts` |
-| **Store** | Insert, index into FTS5, queue cover art, harvest outbound links as new candidates | `src/lib/ingest.ts` |
+| **Store** | Insert, build the search vector, queue cover art, harvest outbound links as new candidates | `src/lib/ingest.ts` |
 
 Discovered sites scoring above `AUTO_APPROVE_QUALITY` go live automatically. Everything else — and
 every human submission — waits in the moderation queue.
@@ -87,33 +87,30 @@ every site has a distinctive cover and the same site always produces the same pi
 
 ## Deploying to Netlify
 
-Netlify Functions have no persistent disk and no long-running process, so two things move
-off the local machine. Everything else deploys as-is.
+Netlify Functions have no persistent disk and no long-running process, so two things live
+off the filesystem. Everything else deploys as-is.
 
-| Locally | On Netlify |
+| Concern | How it works |
 | --- | --- |
-| SQLite file in `data/` | hosted libSQL (Turso) over HTTP — same SQL, same FTS5 |
-| Thumbnails in `data/thumbs/` | Netlify Blobs |
-| `npm run worker` loop | scheduled function poking `/api/worker` every 5 minutes |
+| Database | Postgres over a pooled connection (Supabase, Neon, or any Postgres) |
+| Cover art | Netlify Blobs in production, `data/thumbs/` locally |
+| Background work | `npm run worker` loop locally; a scheduled function poking `/api/worker` every 5 minutes on Netlify |
 
-**1. Create the database** ([Turso](https://turso.tech) has a free tier):
+**1. Get a Postgres database.** Any provider works. On Supabase, take the **Transaction pooler**
+string from Project Settings → Database — port `6543`, not the direct `5432` connection. A
+serverless deploy opens and drops connections constantly and will exhaust a direct pool.
 
-```bash
-turso db create portico && turso db show portico --url && turso db tokens create portico
-```
-
-**2. Populate it** — point your local machine at the remote database and seed it once:
+**2. Populate it once** from your machine:
 
 ```bash
-TURSO_DATABASE_URL=libsql://… TURSO_AUTH_TOKEN=… npm run setup
+DATABASE_URL='postgresql://…@…pooler.supabase.com:6543/postgres' npm run setup
 ```
 
 **3. Set the environment variables** in Netlify → Site configuration → Environment variables:
 
 | Variable | Value |
 | --- | --- |
-| `TURSO_DATABASE_URL` | `libsql://…` from step 1 |
-| `TURSO_AUTH_TOKEN` | token from step 1 |
+| `DATABASE_URL` | the pooled connection string from step 1 |
 | `WORKER_TOKEN` | any long random string — **required**, or the worker refuses to run |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | change these from the defaults |
 | `NEXT_PUBLIC_SITE_URL` | optional; detected from Netlify's `$URL` if unset |
@@ -134,9 +131,7 @@ It returns what it scheduled, promoted and ran. `/admin/jobs` shows the same que
 
 ### Deploying somewhere else
 
-Any Node host works. With a writable disk (a VPS, Fly, Railway) leave `TURSO_DATABASE_URL`
-empty to keep the local SQLite file, and run `npm run worker` as a second process — that is
-the simpler setup, and the faster one, since queries stay in-process.
+Any Node host works. On a VPS or Fly machine, point `DATABASE_URL` at a Postgres on the same host and run `npm run worker` as a second process. That is the simpler setup and the faster one, since the database round trip stays local.
 
 ---
 
@@ -147,7 +142,7 @@ src/
   app/                 routes — public pages, /admin console, /api endpoints
   components/          UI: cards, shelves, command palette, filters, cover art
   lib/
-    db.ts schema.ts    libSQL connection + idempotent DDL
+    db.ts schema.ts    Postgres connection + idempotent DDL
     storage.ts         cover art: local disk or Netlify Blobs
     ingest.ts          the pipeline
     classify.ts        category + tag + quality scoring
@@ -161,11 +156,11 @@ src/
 workers/worker.ts      the background loop (local / VPS)
 netlify/functions/     scheduled worker tick (serverless)
 scripts/               migrate · seed · reset · repair · dedupe · ingest · discover · inspect
-data/                  local SQLite database + thumbnails (gitignored)
+data/                  generated cover art in development (gitignored)
 ```
 
-Stack: Next.js 16 (App Router, React 19, server actions), TypeScript, Tailwind, libSQL/SQLite
-with FTS5 search, `sharp` for images. No API keys, no analytics, no telemetry.
+Stack: Next.js 16 (App Router, React 19, server actions), TypeScript, Tailwind, Postgres with
+full-text search, `sharp` for images. No API keys, no analytics, no telemetry.
 
 ---
 
@@ -177,7 +172,7 @@ with FTS5 search, `sharp` for images. No API keys, no analytics, no telemetry.
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run worker` | Background worker — discovery, ingest, cover art, maintenance |
 | `npm run setup` | `db:migrate` + `db:seed` |
-| `npm run db:reset` | Delete the database and thumbnails |
+| `npm run db:reset` | Drop every table and clear generated cover art |
 | `npm run db:repair` | Housekeeping: restore curated copy, tidy crawled titles, rebuild the index (`-- --prune` also retires ineligible entries) |
 | `npm run db:dedupe` | Collapse organisations listed more than once (`-- --dry` to preview) |
 | `npm run reclassify` | Re-file crawled sites against the current lexicon |
@@ -203,11 +198,11 @@ Everything in `.env.local`, all with working defaults — see `.env.example`. Th
 
 ## Being a good citizen
 
-The crawler identifies as `PorticoBot`, requests one page per site, obeys `robots.txt` including
+The crawler identifies as `AmbleBot`, requests one page per site, obeys `robots.txt` including
 wildcards, never logs in and never submits forms. To opt out entirely:
 
 ```
-User-agent: PorticoBot
+User-agent: AmbleBot
 Disallow: /
 ```
 

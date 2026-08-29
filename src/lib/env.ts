@@ -23,16 +23,19 @@ const netlifyUrl = str('URL', '') || str('DEPLOY_PRIME_URL', '')
 
 export const env = {
   siteUrl: (str('NEXT_PUBLIC_SITE_URL', '') || netlifyUrl || 'http://localhost:3000').replace(/\/+$/, ''),
-  siteName: str('NEXT_PUBLIC_SITE_NAME', 'Portico'),
-  dataDir: path.resolve(process.cwd(), str('PORTICO_DATA_DIR', './data')),
+  siteName: str('NEXT_PUBLIC_SITE_NAME', 'web-amble'),
+  dataDir: path.resolve(process.cwd(), str('WEBAMBLE_DATA_DIR', './data')),
 
   /**
-   * libSQL connection. Empty means "local file in the data directory", which is
-   * the default for development. In production set a hosted libSQL URL
-   * (`libsql://…`) plus an auth token.
+   * Postgres connection string. Use a pooled connection (Supabase's transaction
+   * pooler on port 6543, or PgBouncer) — serverless invocations open and drop
+   * connections constantly and would exhaust a direct pool.
    */
-  databaseUrl: str('TURSO_DATABASE_URL', ''),
-  databaseAuthToken: str('TURSO_AUTH_TOKEN', '') || undefined,
+  databaseUrl: str('DATABASE_URL', ''),
+  /** Serverless wants a small pool per instance; a long-lived worker can use more. */
+  dbPoolSize: num('DB_POOL_SIZE', 3),
+  /** DB_TRACE=1 logs every statement with timing and in-flight count. */
+  dbTrace: bool('DB_TRACE', false),
 
   /** Shared secret guarding the scheduled worker endpoint. */
   workerToken: str('WORKER_TOKEN', ''),
@@ -41,10 +44,10 @@ export const env = {
   isNetlify: Boolean(str('NETLIFY', '')),
 
   adminUsername: str('ADMIN_USERNAME', 'admin'),
-  adminPassword: str('ADMIN_PASSWORD', 'portico-admin'),
+  adminPassword: str('ADMIN_PASSWORD', 'webamble-admin'),
   adminEmail: str('ADMIN_EMAIL', 'admin@localhost'),
 
-  crawlerUserAgent: str('CRAWLER_USER_AGENT', 'PorticoBot/1.0 (+https://portico.local/about#bot)'),
+  crawlerUserAgent: str('CRAWLER_USER_AGENT', 'AmbleBot/1.0 (+https://webamble.local/about#bot)'),
   crawlerTimeoutMs: num('CRAWLER_TIMEOUT_MS', 12_000),
   crawlerMaxHtmlBytes: num('CRAWLER_MAX_HTML_BYTES', 1_500_000),
   crawlerConcurrency: num('CRAWLER_CONCURRENCY', 4),
@@ -59,6 +62,6 @@ export const env = {
 } as const
 
 export const paths = {
-  db: path.join(env.dataDir, 'portico.db'),
+  /** Local scratch space for generated cover art. Netlify Blobs replaces this in production. */
   thumbs: path.join(env.dataDir, 'thumbs'),
 } as const

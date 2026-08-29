@@ -55,7 +55,7 @@ export function Header({ user, pendingCount = 0 }: { user: PublicUser | null; pe
       )}
     >
       <div className="shell flex h-16 items-center gap-3">
-        <Link href="/" className="shrink-0 no-underline" aria-label="Portico — home">
+        <Link href="/" className="shrink-0 no-underline" aria-label="web-amble — home">
           <Wordmark />
         </Link>
 

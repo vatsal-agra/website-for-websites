@@ -8,7 +8,7 @@ import { AdminNav } from './nav'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: { default: 'Admin', template: '%s · Portico admin' },
+  title: { default: 'Admin', template: '%s · web-amble admin' },
   robots: { index: false, follow: false },
 }
 
@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="shell py-24 text-center">
         <h1 className="font-display text-display-sm">Not for you</h1>
         <p className="mt-4 text-muted">
-          This part of Portico is for editors.{' '}
+          This part of web-amble is for editors.{' '}
           <Link href="/" className="text-ink">
             Go back to the catalogue
           </Link>
@@ -37,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
         <div>
           <p className="eyebrow mb-2">Editor console</p>
-          <h1 className="font-display text-3xl tracking-tight">Portico admin</h1>
+          <h1 className="font-display text-3xl tracking-tight">web-amble admin</h1>
         </div>
         <p className="font-mono text-2xs uppercase tracking-[0.12em] text-faint">
           signed in as @{user.username}

@@ -5,7 +5,7 @@ import { Layers } from 'lucide-react'
 import { get } from '@/lib/db'
 import { toPublicUser } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/session'
-import { collectionPreview, collectionsForUser } from '@/lib/queries/collections'
+import { collectionPreviews, collectionsForUser } from '@/lib/queries/collections'
 import { submissionsByUser } from '@/lib/queries/sites'
 import { formatDate, pluralize } from '@/lib/utils'
 import { CollectionCard } from '@/components/cards'
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   if (!profile) return { title: 'Profile not found' }
   return {
     title: `@${profile.username}`,
-    description: `Collections and submissions by @${profile.username} on Portico.`,
+    description: `Collections and submissions by @${profile.username} on web-amble.`,
   }
 }
 
@@ -42,12 +42,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const collections = isSelf ? allCollections : allCollections.filter((c) => c.is_public)
   const submissions = isSelf || viewer?.role === 'admin' ? await submissionsByUser(profile.id, 24) : []
 
-  const collectionCards = await Promise.all(
-    collections.map(async (collection) => ({
-      collection,
-      preview: await collectionPreview(collection.id, 4),
-    })),
-  )
+  const previews = await collectionPreviews(collections.map((c) => c.id), 4)
+  const collectionCards = collections.map((collection) => ({
+    collection,
+    preview: previews.get(collection.id) ?? [],
+  }))
 
   return (
     <div className="shell py-10 sm:py-14">

@@ -147,7 +147,7 @@ export async function drain(max = 10, budgetMs = 0): Promise<{ ran: number; resu
 }
 
 export async function jobCounts(): Promise<Record<string, number>> {
-  const rows = await all<{ status: string; n: number }>('SELECT status, COUNT(*) AS n FROM jobs GROUP BY status')
+  const rows = await all<{ status: string; n: number }>('SELECT status, COUNT(*)::int AS n FROM jobs GROUP BY status')
   const out: Record<string, number> = { queued: 0, running: 0, done: 0, failed: 0 }
   for (const r of rows) out[r.status] = Number(r.n)
   return out

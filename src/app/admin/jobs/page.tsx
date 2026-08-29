@@ -16,7 +16,7 @@ const TONE = {
 } as const
 
 export default async function JobsPage() {
-  const [counts, jobs, stats] = await Promise.all([await jobCounts(), await recentJobs(50), await getStats()])
+  const [counts, jobs, stats] = await Promise.all([jobCounts(), recentJobs(50), getStats()])
 
   return (
     <div className="space-y-6">
@@ -46,7 +46,7 @@ export default async function JobsPage() {
 
       <p className="rounded-xl border border-line bg-raised px-4 py-3 text-xs leading-relaxed text-muted">
         The dedicated worker (<code className="font-mono">npm run worker</code>) processes this queue continuously
-        and is the recommended way to run Portico. “Run a tick” here does the same work inline so you can operate
+        and is the recommended way to run web-amble. “Run a tick” here does the same work inline so you can operate
         the site without a second process.
       </p>
 

@@ -5,7 +5,7 @@ import { searchSites, trendingSites } from '../src/lib/queries/sites'
 
 /** Quick health readout of the catalogue: `npm run inspect` */
 
-banner('Portico — inspect')
+banner('web-amble — inspect')
 await ready()
 
 const stats = await getStats()
@@ -16,12 +16,12 @@ log(
 log(`jobs: ${stats.jobsQueued} queued, ${stats.jobsFailed} failed · reports: ${stats.openReports} open`)
 
 const thumbs = await all<{ thumb_source: string; n: number }>(
-  `SELECT thumb_source, COUNT(*) n FROM sites WHERE status = 'approved' GROUP BY thumb_source`,
+  `SELECT thumb_source, COUNT(*)::int n FROM sites WHERE status = 'approved' GROUP BY thumb_source`,
 )
 log(`cover art: ${thumbs.map((t) => `${t.n} ${t.thumb_source}`).join(', ')}`)
 
 const checked = await get<{ n: number }>(
-  `SELECT COUNT(*) n FROM sites WHERE status = 'approved' AND checked_at IS NOT NULL`,
+  `SELECT COUNT(*)::int n FROM sites WHERE status = 'approved' AND checked_at IS NOT NULL`,
 )
 log(`${Number(checked?.n ?? 0)}/${stats.approved} have an evidence-based quality score`)
 

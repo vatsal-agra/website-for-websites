@@ -9,7 +9,7 @@ import {
   siteOfTheDay,
   trendingSites,
 } from '@/lib/queries/sites'
-import { collectionPreview, listCollections } from '@/lib/queries/collections'
+import { collectionPreviews, listCollections } from '@/lib/queries/collections'
 import { getStats } from '@/lib/queries/stats'
 import { formatNumber, timeAgo } from '@/lib/utils'
 import { SiteCard } from '@/components/site/site-card'
@@ -24,22 +24,22 @@ export default async function HomePage() {
   const user = await getCurrentUser()
   const signedIn = Boolean(user)
 
+  // no `await` inside Promise.all — that would run them one after another
   const [stats, feature, trending, fresh, gems, categories, collections] = await Promise.all([
-    await getStats(),
-    await siteOfTheDay(),
-    await trendingSites(12, user?.id),
-    await newestSites(12, user?.id),
-    await hiddenGems(12, user?.id),
-    await listCategories(),
-    await listCollections({ editorialOnly: true, limit: 6 }),
+    getStats(),
+    siteOfTheDay(),
+    trendingSites(12, user?.id),
+    newestSites(12, user?.id),
+    hiddenGems(12, user?.id),
+    listCategories(),
+    listCollections({ editorialOnly: true, limit: 6 }),
   ])
 
-  const collectionsWithPreview = await Promise.all(
-    collections.map(async (collection) => ({
-      collection,
-      preview: await collectionPreview(collection.id, 4),
-    })),
-  )
+  const previews = await collectionPreviews(collections.map((c) => c.id), 4)
+  const collectionsWithPreview = collections.map((collection) => ({
+    collection,
+    preview: previews.get(collection.id) ?? [],
+  }))
 
   // two category shelves, rotated daily so the home page is never quite the same
   const daySeed = Number(new Date().toISOString().slice(8, 10))
@@ -80,7 +80,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            Portico is a storefront for websites — the way an app store is for apps. Browse the shelves, follow a
+            web-amble is a storefront for websites — the way an app store is for apps. Browse the shelves, follow a
             collection, or press shuffle and land somewhere you would never have searched for.
           </p>
 

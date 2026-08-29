@@ -14,7 +14,7 @@
 # route on the Node runtime rather than the edge.
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["sharp", "@libsql/client"]
+  external_node_modules = ["sharp", "postgres"]
 
 [functions."worker-tick"]
   schedule = "*/5 * * * *"

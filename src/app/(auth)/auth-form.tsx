@@ -5,7 +5,7 @@ import { useActionState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import type { AuthFormState } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/primitives'
-import { PorticoGlyph } from '@/components/wordmark'
+import { WebAmbleGlyph } from '@/components/wordmark'
 import { cn } from '@/lib/utils'
 
 export function AuthForm({
@@ -29,7 +29,7 @@ export function AuthForm({
     <div className="shell flex min-h-[calc(100dvh-4rem)] items-center justify-center py-16">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <PorticoGlyph className="mx-auto mb-5 h-7 w-7 text-accent" />
+          <WebAmbleGlyph className="mx-auto mb-5 h-7 w-7 text-accent" />
           <h1 className="font-display text-3xl tracking-tight">{title}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted">{subtitle}</p>
         </div>
@@ -84,7 +84,7 @@ export function AuthForm({
         <div className="mt-6 text-center">{footer}</div>
 
         <p className="mt-10 text-center text-xs leading-relaxed text-faint">
-          Portico stores a username, a hashed password and the sites you save. Nothing else, and nothing is
+          web-amble stores a username, a hashed password and the sites you save. Nothing else, and nothing is
           shared with anybody.
         </p>
       </div>

@@ -10,8 +10,8 @@ export const metadata = { title: 'Discovery' }
 
 export default async function SourcesPage() {
   const [sources, candidates, recentSkips, blocklist] = await Promise.all([
-    await listSources(),
-    all<{ status: string; n: number }>(`SELECT status, COUNT(*) n FROM candidates GROUP BY status`),
+    listSources(),
+    all<{ status: string; n: number }>(`SELECT status, COUNT(*)::int AS n FROM candidates GROUP BY status`),
     all<{ url: string; note: string }>(
       `SELECT url, note FROM candidates WHERE status = 'skipped' AND note != '' ORDER BY id DESC LIMIT 8`,
     ),

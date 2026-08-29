@@ -31,7 +31,7 @@ export default async function AdminSitesPage({
 
   const categories = await listCategories()
   const counts = Object.fromEntries(
-    (await all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM sites GROUP BY status')).map((r) => [
+    (await all<{ status: string; n: number }>('SELECT status, COUNT(*)::int AS n FROM sites GROUP BY status')).map((r) => [
       r.status,
       Number(r.n),
     ]),
