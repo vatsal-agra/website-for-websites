@@ -40,3 +40,13 @@
 469 block a school's institutional site
 470 block a school's institutional site
 474 block a digital marketing agency
+
+# A second pass, once the first had pulled the .fr/.eu domains out and the
+# remainder of the same cluster became visible on other TLDs. nlm.nih.gov is
+# left listed: the National Library of Medicine is a reference collection
+# anybody would be glad to find, which is the test.
+560 block a foundation's institutional site
+556 block a public employment service's portal
+515 block a business school's institutional site
+466 block a school's institutional site
+454 block a school's research repository, not a site to browse
