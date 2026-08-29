@@ -19,16 +19,35 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 }
 
+/**
+ * How many recent picks to remember. Carried in the URL rather than a cookie so
+ * the page stays a plain server component, and capped so the link cannot grow
+ * without bound on a long session.
+ */
+const HISTORY = 24
+
+function parseSeen(raw: string | undefined): number[] {
+  if (!raw) return []
+  return raw
+    .split('.')
+    .map((n) => Number(n))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .slice(-HISTORY)
+}
+
 export default async function ShufflePage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string }>
+  searchParams: Promise<{ seen?: string }>
 }) {
-  const { from } = await searchParams
+  const { seen } = await searchParams
+  const history = parseSeen(seen)
   const user = await getCurrentUser()
-  const site = await randomSite(from ? Number(from) : undefined)
+  const site = await randomSite(history)
 
   if (!site) notFound()
+
+  const nextHref = `/shuffle?seen=${[...history, site.id].slice(-HISTORY).join('.')}`
 
   try {
     await recordView(site.id)
@@ -38,7 +57,7 @@ export default async function ShufflePage({
 
   return (
     <div className="shell flex min-h-[calc(100dvh-4rem)] flex-col justify-center py-10">
-      <ShuffleKeys nextHref={`/shuffle?from=${site.id}`} visitHref={`/go/${site.slug}`} />
+      <ShuffleKeys nextHref={nextHref} visitHref={`/go/${site.slug}`} />
 
       <div className="mb-6 flex items-center justify-between">
         <p className="eyebrow">Somewhere at random</p>
@@ -96,7 +115,7 @@ export default async function ShufflePage({
               Visit {site.domain}
               <ArrowUpRight className="h-4 w-4" />
             </VisitLink>
-            <ButtonLink href={`/shuffle?from=${site.id}`} variant="secondary" size="lg">
+            <ButtonLink href={nextHref} variant="secondary" size="lg">
               <RefreshCw className="h-4 w-4" />
               Somewhere else
             </ButtonLink>

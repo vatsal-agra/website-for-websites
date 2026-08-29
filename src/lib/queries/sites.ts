@@ -320,14 +320,30 @@ export async function relatedSites(site: Site, limit = 8): Promise<Site[]> {
   return hydrate(rows)
 }
 
-export async function randomSite(excludeId?: number): Promise<Site | null> {
-  const row = await get(
-    `SELECT s.* FROM sites s
-     WHERE s.status = 'approved' AND s.id != ?
-     ORDER BY random() LIMIT 1`,
-    [excludeId ?? -1],
-  )
-  return row ? (await hydrate([row]))[0] : null
+/**
+ * A random listing, avoiding anything the visitor has just been shown.
+ *
+ * Shuffle is the whole point of the place, and with a catalogue of a few
+ * hundred a naive random pick repeats within a handful of presses, which reads
+ * as broken. If the exclusion list has swallowed everything we fall back to an
+ * unrestricted pick rather than returning nothing.
+ */
+export async function randomSite(exclude: number | number[] = []): Promise<Site | null> {
+  const ids = (Array.isArray(exclude) ? exclude : [exclude]).filter((n) => Number.isFinite(n) && n > 0)
+
+  if (ids.length) {
+    const placeholders = ids.map(() => '?').join(',')
+    const row = await get(
+      `SELECT s.* FROM sites s
+       WHERE s.status = 'approved' AND s.id NOT IN (${placeholders})
+       ORDER BY random() LIMIT 1`,
+      ids,
+    )
+    if (row) return (await hydrate([row]))[0]
+  }
+
+  const any = await get(`SELECT s.* FROM sites s WHERE s.status = 'approved' ORDER BY random() LIMIT 1`)
+  return any ? (await hydrate([any]))[0] : null
 }
 
 /** Deterministic per-day pick, promoted manually when an editor sets featured_on. */
