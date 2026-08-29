@@ -27,6 +27,7 @@ export default async function CategoriesPage() {
         </p>
       </header>
 
+      <h2 className="sr-only">All {categories.length} categories</h2>
       <div className="stack-fade grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {categories.map((category) => (
           <CategoryTile key={category.id} category={category} />

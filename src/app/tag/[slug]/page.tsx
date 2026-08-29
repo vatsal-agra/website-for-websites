@@ -128,6 +128,7 @@ async function TagResults({
   }
   return (
     <>
+      <h2 className="sr-only">{result.total} sites with this tag, page {result.page} of {result.pages}</h2>
       <SiteGrid sites={result.sites} signedIn={signedIn} />
       <Pagination base={base} query={query} page={result.page} pages={result.pages} />
     </>

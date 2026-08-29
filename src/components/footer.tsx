@@ -75,7 +75,7 @@ export function Footer({ categories, stats }: { categories: Category[]; stats: W
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             {COLUMNS.map((column) => (
               <div key={column.title}>
-                <h3 className="eyebrow mb-3">{column.title}</h3>
+                <h2 className="eyebrow mb-3">{column.title}</h2>
                 <ul className="space-y-2">
                   {column.links.map((link) => (
                     <li key={link.href + link.label}>
@@ -95,7 +95,7 @@ export function Footer({ categories, stats }: { categories: Category[]; stats: W
 
         {categories.length > 0 && (
           <div className="mt-12 border-t border-line pt-8">
-            <h3 className="eyebrow mb-4">Every shelf</h3>
+            <h2 className="eyebrow mb-4">Every shelf</h2>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {categories.map((category) => (
                 <Link

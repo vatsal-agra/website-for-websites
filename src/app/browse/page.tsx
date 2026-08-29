@@ -113,9 +113,9 @@ async function SiteResults({
 
   return (
     <>
-      <p className="sr-only" aria-live="polite">
+      <h2 className="sr-only" aria-live="polite">
         {result.total} sites, sorted by {sortLabel}, page {result.page} of {result.pages}
-      </p>
+      </h2>
       <SiteGrid sites={result.sites} signedIn={signedIn} />
       <Pagination base="/browse" query={query} page={result.page} pages={result.pages} />
     </>

@@ -17,6 +17,17 @@ interface CoverArtProps {
   monogram?: string
 }
 
+/**
+ * SVG `id`s have to be unique per *document*, not per site, and the same site
+ * legitimately appears twice on a page — in a shelf and in the feature slot,
+ * say. Deriving the id from the seed alone produced duplicates, which is
+ * invalid markup even when, as here, both definitions are identical.
+ *
+ * This component only ever renders on the server, so a module counter is safe:
+ * ids never have to match anything the client computes.
+ */
+let instance = 0
+
 function mulberry(seed: number) {
   let a = seed >>> 0
   return () => {
@@ -34,7 +45,7 @@ export function CoverArt({ seed, hue, className, monogram }: CoverArtProps) {
   const h1 = hue
   const h2 = (hue + 40 + (h % 60)) % 360
   const h3 = (hue + 180 + (h % 40)) % 360
-  const id = `c${h.toString(36)}`
+  const blurId = `blur-c${h.toString(36)}-${(instance = (instance + 1) % 1_000_000)}`
 
   const shapes: React.ReactNode[] = []
 
@@ -119,7 +130,7 @@ export function CoverArt({ seed, hue, className, monogram }: CoverArtProps) {
           rx={60 + rand() * 110}
           ry={50 + rand() * 90}
           fill={`hsl(${[h1, h2, h3][i % 3]} 74% 60% / ${0.22 + rand() * 0.3})`}
-          filter={`url(#blur-${id})`}
+          filter={`url(#${blurId})`}
         />,
       )
     }
@@ -127,22 +138,20 @@ export function CoverArt({ seed, hue, className, monogram }: CoverArtProps) {
 
   return (
     <div className={cn('relative h-full w-full overflow-hidden', className)}>
+      {/* The base wash is a CSS gradient rather than an SVG <linearGradient>:
+          same picture, one fewer id to keep unique. */}
       <svg
         viewBox="0 0 400 250"
         preserveAspectRatio="xMidYMid slice"
         className="h-full w-full"
         aria-hidden="true"
+        style={{ backgroundImage: `linear-gradient(135deg, hsl(${h1} 34% 14%), hsl(${h2} 30% 8%))` }}
       >
         <defs>
-          <linearGradient id={`bg-${id}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={`hsl(${h1} 34% 14%)`} />
-            <stop offset="100%" stopColor={`hsl(${h2} 30% 8%)`} />
-          </linearGradient>
-          <filter id={`blur-${id}`} x="-50%" y="-50%" width="200%" height="200%">
+          <filter id={blurId} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="26" />
           </filter>
         </defs>
-        <rect width="400" height="250" fill={`url(#bg-${id})`} />
         {shapes}
       </svg>
       {monogram && (

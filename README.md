@@ -169,6 +169,7 @@ npm test          # 77 unit tests over the pure logic
 npm run typecheck
 npm run build     # succeeds even with no DATABASE_URL set
 npm run smoke     # every route type against a running server, read to the last byte
+npm run audit     # accessibility and markup over the rendered HTML of every page
 ```
 
 Then check, in order:
@@ -178,7 +179,7 @@ Then check, in order:
 - [ ] `ADMIN_PASSWORD` is not the default.
 - [ ] `npm run setup` has been run **against the production database**, not just locally.
 - [ ] The database is not paused (see below).
-- [ ] After the first deploy, `npm run smoke -- https://your-site` passes.
+- [ ] After the first deploy, `npm run smoke -- https://your-site` and `npm run audit -- https://your-site` both pass.
 
 ### Verifying a deploy
 
@@ -252,6 +253,7 @@ checked, and never call the classifier AI, because it is a weighted lexicon.
 | `npm run discover -- --jobs 40` | Run every source once and process the queue |
 | `npm run rescore` | Queue a re-crawl of anything without an evidence-based quality score (`-- --all` for everything) |
 | `npm run score -- <url>` | Fetch a page and print what the ingester would make of it — score, category and every contributing term |
+| `npm run audit` | Accessibility and markup audit of every route type: alt text, link and control names, heading order, duplicate ids |
 | `npm run inspect` | Health readout: counts, cover art coverage, category spread, current top of the catalogue |
 | `npm run typecheck` | `tsc --noEmit` |
 

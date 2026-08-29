@@ -143,6 +143,7 @@ async function CategoryResults({
 
   return (
     <>
+      <h2 className="sr-only">{result.total} sites on this shelf, page {result.page} of {result.pages}</h2>
       <SiteGrid sites={result.sites} signedIn={signedIn} />
       <Pagination base={base} query={query} page={result.page} pages={result.pages} />
     </>

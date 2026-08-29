@@ -24,7 +24,8 @@
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "test:watch": "node --import tsx --test --watch \"tests/**/*.test.ts\"",
     "smoke": "tsx scripts/smoke.ts",
-    "score": "tsx scripts/score.ts"
+    "score": "tsx scripts/score.ts",
+    "audit": "tsx scripts/audit.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",

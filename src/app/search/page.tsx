@@ -152,6 +152,9 @@ async function SearchResults({
 
   return (
     <>
+      <h2 className="sr-only" aria-live="polite">
+        {result.total} results for “{term}”, page {result.page} of {result.pages}
+      </h2>
       <SiteGrid sites={result.sites} signedIn={signedIn} />
       <Pagination base="/search" query={query} page={result.page} pages={result.pages} />
     </>

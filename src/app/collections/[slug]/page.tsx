@@ -94,6 +94,8 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
             }
           />
         ) : (
+          <>
+          <h2 className="sr-only">{pluralize(sites.length, 'site')} in this collection</h2>
           <div className="stack-fade grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sites.map((site) => (
               <SiteCard
@@ -104,6 +106,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
               />
             ))}
           </div>
+          </>
         )}
       </div>
 
