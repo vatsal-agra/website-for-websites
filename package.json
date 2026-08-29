@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "web-amble \u2014 a storefront for the whole web. Discover, browse and submit websites.",
+  "description": "web-amble — a storefront for the whole web. Discover, browse and submit websites.",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "next build",
@@ -28,7 +28,6 @@
     "audit": "tsx scripts/audit.ts"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4",
     "@netlify/blobs": "^10.7.10",
     "cheerio": "^1.0.0",
     "clsx": "^2.1.1",
@@ -37,7 +36,7 @@
     "postgres": "^3.4.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "sharp": "^0.33.5",
+    "sharp": "^0.35.4",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },

@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  # sharp and better-sqlite3 ship platform-specific binaries; let npm resolve them
+  # sharp ships platform-specific binaries; let npm resolve them for linux
   NPM_FLAGS = "--include=optional"
 
 [[plugins]]
