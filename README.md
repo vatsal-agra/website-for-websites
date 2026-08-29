@@ -218,3 +218,14 @@ Disallow: /
 
 There is no analytics script, no third-party embed and no tracking cookie — the only cookie is the
 session. Outbound clicks pass through `/go/[slug]`, which increments a counter and strips the referrer.
+
+### Share cards
+
+Every listing, collection and the home page generate their own Open Graph image
+at `/…/opengraph-image` — a 1200×630 PNG with the site name, category, tagline
+and a colour wash derived from the same hue as its in-app cover art.
+
+They are generated rather than reusing the listed site's own `og:image`, which
+is often a webp social platforms refuse to render, is missing entirely for a
+large share of sites, and carries none of the context that makes a shared link
+legible. No external fonts are fetched, so a card renders offline.

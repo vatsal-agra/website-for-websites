@@ -34,7 +34,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       url: `${env.siteUrl}/site/${site.slug}`,
       type: 'article',
-      images: site.thumb_key ? [{ url: `${env.siteUrl}/api/thumb/${site.thumb_key}` }] : undefined,
+      // No `images` here on purpose: opengraph-image.tsx generates a branded PNG
+      // card for this route. Pointing at the listed site's own og:image instead
+      // would be a webp many social platforms refuse to render, would be missing
+      // entirely for the many sites that publish none, and would drop the
+      // category and tagline that make a shared link legible.
     },
     robots: site.status === 'approved' ? { index: true, follow: true } : { index: false, follow: false },
   }
