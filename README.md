@@ -135,6 +135,24 @@ Supabase dashboard, or upgrade the plan if the site needs to be reliably up.
 
 web-amble detects this case and says so plainly rather than surfacing the driver's error.
 
+### Before you deploy
+
+```bash
+npm test          # 74 unit tests over the pure logic
+npm run typecheck
+npm run build     # succeeds even with no DATABASE_URL set
+npm run smoke     # every route type against a running server
+```
+
+Then check, in order:
+
+- [ ] `DATABASE_URL` points at a **pooled** connection (port 6543 on Supabase), not the direct one.
+- [ ] `WORKER_TOKEN` is set. Without it the scheduled function refuses to run and the catalogue silently stops updating.
+- [ ] `ADMIN_PASSWORD` is not the default.
+- [ ] `npm run setup` has been run **against the production database**, not just locally.
+- [ ] The database is not paused (see below).
+- [ ] After the first deploy, `npm run smoke -- https://your-site` passes.
+
 ### Verifying a deploy
 
 ```bash

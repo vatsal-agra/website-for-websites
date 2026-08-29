@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowUpRight } from 'lucide-react'
 import { getSiteById, listCategories } from '@/lib/queries/sites'
 import { displayUrl } from '@/lib/url'
-import { formatDate, timeAgo } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { SiteCover } from '@/components/site/cover'
 import { Badge } from '@/components/ui/primitives'
 import {
@@ -16,6 +16,7 @@ import {
   rejectSiteAction,
 } from '@/lib/actions/admin'
 import { SiteEditForm } from './edit-form'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,7 +101,7 @@ export default async function AdminSitePage({ params }: { params: Promise<{ id: 
               <Row label="Votes / clicks">{`${site.votes} / ${site.clicks}`}</Row>
               <Row label="Views">{site.views}</Row>
               <Row label="Added">{formatDate(site.created_at)}</Row>
-              <Row label="Checked">{site.checked_at ? timeAgo(site.checked_at) : 'never'}</Row>
+              <Row label="Checked">{site.checked_at ? <RelativeTime value={site.checked_at} /> : 'never'}</Row>
               <Row label="HTTP">{site.http_status ?? '—'}</Row>
               <Row label="Dead strikes">{site.dead_strikes}</Row>
               <Row label="Language">{site.lang}</Row>

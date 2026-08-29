@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import { ArrowUpRight, Globe, Layers, ShieldCheck, Sparkles } from 'lucide-react'
 import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/session'
@@ -11,7 +12,7 @@ import { ShelfSkeleton } from '@/components/skeletons'
 import type { Site } from '@/lib/types'
 import { ATTRIBUTE_DEFS } from '@/lib/taxonomy'
 import { displayUrl } from '@/lib/url'
-import { formatDate, formatNumber, timeAgo } from '@/lib/utils'
+import { formatDate, formatNumber } from '@/lib/utils'
 import { SiteCover } from '@/components/site/cover'
 import { SiteMark } from '@/components/site/favicon'
 import { ReportButton, SaveButton, ShareButton, VisitLink, VoteButton } from '@/components/site/actions'
@@ -19,6 +20,7 @@ import { AddToCollection } from '@/components/site/add-to-collection'
 import { SiteCard } from '@/components/site/site-card'
 import { Shelf } from '@/components/shelf'
 import { Badge, SectionHeader } from '@/components/ui/primitives'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +57,18 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
   if (!site) notFound()
   if (site.status !== 'approved' && user?.role !== 'admin') notFound()
 
+  // Counted after the response is sent. A Suspense boundary that renders
+  // nothing is not a real boundary — it left an empty one behind that broke
+  // hydration for the whole page — and analytics has no business being in the
+  // render tree at all.
+  after(async () => {
+    try {
+      await recordView(site.id)
+    } catch {
+      /* view counting must never break the page */
+    }
+  })
+
   const activeAttributes = ATTRIBUTE_DEFS.filter((attr) => site.attributes[attr.key])
 
   const jsonLd = {
@@ -68,11 +82,11 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
 
   return (
     <>
+      {/* Structured data. React 19 logs a notice about script tags inside
+          components; it is harmless here because JSON-LD is data a crawler
+          reads out of the HTML, never something the browser executes. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <Suspense fallback={null}>
-        <RecordView siteId={site.id} />
-      </Suspense>
 
       {site.status !== 'approved' && (
         <div className="border-b border-warning/30 bg-warning/10">
@@ -241,7 +255,7 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
             <h2 className="eyebrow mb-4">Catalogue record</h2>
             <dl className="space-y-3 text-sm">
               <Row label="Added">{formatDate(site.published_at ?? site.created_at)}</Row>
-              <Row label="Last checked">{site.checked_at ? timeAgo(site.checked_at) : 'not yet'}</Row>
+              <Row label="Last checked">{site.checked_at ? <RelativeTime value={site.checked_at} /> : 'not yet'}</Row>
               <Row label="Upvotes">{formatNumber(site.votes)}</Row>
               <Row label="Visits from here">{formatNumber(site.clicks)}</Row>
               <Row label="Language">{site.lang.toUpperCase()}</Row>
@@ -380,21 +394,4 @@ async function SameShelf({
       </Shelf>
     </section>
   )
-}
-
-/**
- * Counts the view without holding up first paint.
- *
- * Deliberately a Suspense child rather than a fire-and-forget promise: on a
- * serverless host an un-awaited write is liable to be dropped when the
- * invocation ends, whereas work inside the tree keeps the response open until
- * it finishes — and the shell has already streamed by then either way.
- */
-async function RecordView({ siteId }: { siteId: number }) {
-  try {
-    await recordView(siteId)
-  } catch {
-    /* view counting must never break the page */
-  }
-  return null
 }

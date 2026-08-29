@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { ArrowUpRight, ArrowUp } from 'lucide-react'
 import type { Site } from '@/lib/types'
-import { cn, formatNumber, timeAgo } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 import { displayUrl } from '@/lib/url'
 import { SiteCover } from './cover'
 import { SiteMark } from './favicon'
 import { SaveButton } from './actions'
+import { RelativeTime } from '@/components/relative-time'
 
 interface SiteCardProps {
   site: Site
@@ -97,7 +98,7 @@ export function SiteCard({
               {formatNumber(site.votes)}
             </span>
           ) : (
-            <span className="shrink-0 font-mono text-2xs text-faint">{timeAgo(site.published_at ?? site.created_at)}</span>
+            <RelativeTime value={site.published_at ?? site.created_at} className="shrink-0 font-mono text-2xs text-faint" />
           )}
         </div>
       </div>
@@ -149,7 +150,7 @@ function SiteRow({
         <p className="mt-1 font-mono text-2xs text-faint">
           {displayUrl(site.url, 40)}
           {site.votes > 0 && ` · ${formatNumber(site.votes)} votes`} · added{' '}
-          {timeAgo(site.published_at ?? site.created_at)}
+          <RelativeTime value={site.published_at ?? site.created_at} />
         </p>
       </div>
 

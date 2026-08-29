@@ -3,10 +3,11 @@ import { ArrowUpRight, Check, Inbox } from 'lucide-react'
 import { getCurrentUser } from '@/lib/session'
 import { listSites } from '@/lib/queries/sites'
 import { displayUrl } from '@/lib/url'
-import { formatDate, timeAgo } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { SiteCover } from '@/components/site/cover'
 import { Badge, EmptyState } from '@/components/ui/primitives'
 import { approveSiteAction, rejectSiteAction } from '@/lib/actions/admin'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Review queue' }
@@ -101,7 +102,7 @@ export default async function QueuePage({
                   )}
 
                   <p className="mt-3 flex flex-wrap gap-x-3 font-mono text-2xs text-faint">
-                    <span>added {timeAgo(site.created_at)}</span>
+                    <span>added <RelativeTime value={site.created_at} /></span>
                     <span>{formatDate(site.created_at)}</span>
                     <span>{site.lang.toUpperCase()}</span>
                     {site.http_status && <span>HTTP {site.http_status}</span>}

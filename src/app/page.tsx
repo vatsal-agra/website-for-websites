@@ -12,12 +12,13 @@ import {
 } from '@/lib/queries/sites'
 import { collectionPreviews, listCollections } from '@/lib/queries/collections'
 import { getStats } from '@/lib/queries/stats'
-import { formatNumber, timeAgo } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { SiteCard } from '@/components/site/site-card'
 import { CategoryTile, CollectionCard, FeatureCard } from '@/components/cards'
 import { Shelf } from '@/components/shelf'
 import { ButtonLink, SectionHeader } from '@/components/ui/primitives'
 import { HeroSearch } from '@/components/hero-search'
+import { RelativeTime } from '@/components/relative-time'
 import { CountSkeleton, FeatureSkeleton, GridSkeleton, ShelfSkeleton } from '@/components/skeletons'
 
 export const dynamic = 'force-dynamic'
@@ -172,9 +173,12 @@ async function FreshShelf({ userId, signedIn }: ShelfProps) {
       <SectionHeader
         eyebrow="Just catalogued"
         title="Fresh finds"
-        description={`The most recent additions. Last one landed ${timeAgo(
-          sites[0]?.published_at ?? sites[0]?.created_at,
-        )}.`}
+        description={
+          <>
+            The most recent additions. Last one landed{' '}
+            <RelativeTime value={sites[0]?.published_at ?? sites[0]?.created_at} />.
+          </>
+        }
         action={
           <ButtonLink href="/browse?sort=new" variant="ghost" size="sm">
             See all

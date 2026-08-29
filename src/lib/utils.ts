@@ -100,10 +100,24 @@ export function timeAgo(value: string | Date | null | undefined): string {
   return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
+/**
+ * Formatted in UTC on purpose.
+ *
+ * Without a fixed time zone the server renders this in UTC and the browser in
+ * the reader's local zone, so any timestamp near midnight produces a different
+ * string on each side and React fails hydration for the whole page. Catalogue
+ * dates are a record of when we listed something, not a local event, so UTC is
+ * also the more truthful answer.
+ */
 export function formatDate(value: string | Date | null | undefined): string {
   const d = toDate(value)
   if (!d) return '—'
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 export function clamp(n: number, min: number, max: number) {

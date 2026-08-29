@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { all } from '@/lib/db'
 import { listSites, listCategories } from '@/lib/queries/sites'
 import { displayUrl } from '@/lib/url'
-import { formatNumber, timeAgo } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { Badge, EmptyState } from '@/components/ui/primitives'
 import { SiteMark } from '@/components/site/favicon'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All sites' }
@@ -136,7 +137,7 @@ export default async function AdminSitesPage({
                     {site.votes}
                   </td>
                   <td className="hidden px-3 py-2.5 text-right font-mono text-2xs text-faint lg:table-cell">
-                    {timeAgo(site.published_at ?? site.created_at)}
+                    <RelativeTime value={site.published_at ?? site.created_at} />
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <Link

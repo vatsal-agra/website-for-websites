@@ -1,9 +1,10 @@
 import { Play, RotateCcw, Trash2 } from 'lucide-react'
 import { jobCounts, recentJobs } from '@/lib/jobs'
 import { getStats } from '@/lib/queries/stats'
-import { formatNumber, timeAgo } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { Badge } from '@/components/ui/primitives'
 import { clearJobsAction, retryJobAction, runWorkerTickAction } from '@/lib/actions/admin'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Jobs' }
@@ -86,7 +87,7 @@ export default async function JobsPage() {
                   </p>
                 </td>
                 <td className="px-3 py-2.5 text-right font-mono text-2xs text-faint">
-                  {timeAgo(job.finished_at ?? job.started_at ?? job.created_at)}
+                  <RelativeTime value={job.finished_at ?? job.started_at ?? job.created_at} />
                 </td>
                 <td className="px-3 py-2.5 text-right">
                   {job.status === 'failed' && (

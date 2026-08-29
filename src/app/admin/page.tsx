@@ -4,9 +4,10 @@ import { all } from '@/lib/db'
 import { activitySeries, categoryBreakdown, getStats } from '@/lib/queries/stats'
 import { jobCounts } from '@/lib/jobs'
 import { listSources } from '@/lib/sources'
-import { formatNumber, timeAgo } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { Badge } from '@/components/ui/primitives'
 import { runWorkerTickAction } from '@/lib/actions/admin'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,7 +81,7 @@ export default async function AdminOverview() {
                 <Badge tone={source.enabled ? 'positive' : 'neutral'}>{source.enabled ? 'on' : 'off'}</Badge>
               </div>
               <p className="mt-1 font-mono text-2xs text-faint">
-                {source.last_run_at ? `ran ${timeAgo(source.last_run_at)}` : 'never run'} ·{' '}
+                {source.last_run_at ? <>ran <RelativeTime value={source.last_run_at} /></> : 'never run'} ·{' '}
                 {formatNumber(source.found_total)} found
               </p>
               {source.last_result && (
@@ -144,7 +145,7 @@ export default async function AdminOverview() {
                 <span className="text-ink-soft">{entry.action}</span>
                 {entry.target && <span className="font-mono text-xs text-muted">{entry.target}</span>}
                 {entry.detail && <span className="text-xs text-faint">{entry.detail}</span>}
-                <span className="ml-auto font-mono text-2xs text-faint">{timeAgo(entry.created_at)}</span>
+                <RelativeTime value={entry.created_at} className="ml-auto font-mono text-2xs text-faint" />
               </li>
             ))}
           </ul>

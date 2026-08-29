@@ -1,9 +1,10 @@
 import { all } from '@/lib/db'
 import { listSources } from '@/lib/sources'
-import { formatNumber, timeAgo } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { Badge } from '@/components/ui/primitives'
 import { deleteSourceAction, runSourceAction, toggleSourceAction, removeBlocklistAction } from '@/lib/actions/admin'
 import { NewSourceForm, BlocklistForm } from './forms'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Discovery' }
@@ -44,7 +45,7 @@ export default async function SourcesPage() {
                   {source.url && <p className="mt-1 truncate font-mono text-2xs text-faint">{source.url}</p>}
                   <p className="mt-1.5 font-mono text-2xs text-faint">
                     every {source.interval_min} min ·{' '}
-                    {source.last_run_at ? `last run ${timeAgo(source.last_run_at)}` : 'never run'} ·{' '}
+                    {source.last_run_at ? <>last run <RelativeTime value={source.last_run_at} /></> : 'never run'} ·{' '}
                     {formatNumber(source.found_total)} domains found
                   </p>
                   {source.last_result && (

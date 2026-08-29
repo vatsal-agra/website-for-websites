@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { Flag } from 'lucide-react'
 import { all } from '@/lib/db'
-import { timeAgo } from '@/lib/utils'
 import { Badge, EmptyState } from '@/components/ui/primitives'
 import { resolveReportAction } from '@/lib/actions/admin'
+import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Reports' }
@@ -85,7 +85,7 @@ export default async function ReportsPage({
                     <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted">“{report.detail}”</p>
                   )}
                   <p className="mt-2 font-mono text-2xs text-faint">
-                    {report.reporter} · {timeAgo(report.created_at)} · site is {report.site_status}
+                    {report.reporter} · <RelativeTime value={report.created_at} /> · site is {report.site_status}
                   </p>
                 </div>
 
