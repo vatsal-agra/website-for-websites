@@ -50,7 +50,7 @@ export default async function JobsPage() {
         the site without a second process.
       </p>
 
-      <div className="overflow-hidden rounded-2xl border border-line">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-line bg-surface">

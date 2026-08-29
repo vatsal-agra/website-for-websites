@@ -94,7 +94,7 @@ export default async function AdminSitesPage({
       {result.sites.length === 0 ? (
         <EmptyState title="No sites match" description="Try a different status or clear the search." />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line">
+        <div className="overflow-x-auto rounded-2xl border border-line">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-surface">

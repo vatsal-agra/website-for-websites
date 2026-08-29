@@ -47,7 +47,7 @@ export default async function AdminCollectionsPage() {
 function Table({ collections }: { collections: Awaited<ReturnType<typeof listCollections>> }) {
   if (collections.length === 0) return null
   return (
-    <div className="overflow-hidden rounded-2xl border border-line">
+    <div className="overflow-x-auto rounded-2xl border border-line">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-line bg-surface">
