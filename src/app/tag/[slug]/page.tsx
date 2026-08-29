@@ -1,12 +1,17 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getTag, listCategories, listSites, listTags } from '@/lib/queries/sites'
 import { SiteGrid } from '@/components/site/site-card'
-import { FilterBar, Pagination, parseQuery } from '@/components/filter-bar'
+import type { BrowseQuery } from '@/components/filter-bar'
+import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
+import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
 import { ChipLink, EmptyState } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
+
+type Results = Awaited<ReturnType<typeof listSites>>
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -33,8 +38,9 @@ export default async function TagPage({
   const query = parseQuery(await searchParams)
   const user = await getCurrentUser()
   const base = `/tag/${tag.slug}`
+  const barQuery: BrowseQuery = { ...query, tag: undefined }
 
-  const result = await listSites({
+  const results = listSites({
     tag: tag.slug,
     category: query.category,
     sort: query.sort,
@@ -43,8 +49,12 @@ export default async function TagPage({
     perPage: 24,
     userId: user?.id,
   })
+  results.catch(() => {})
 
-  const otherTags = (await listTags(40)).filter((t) => t.slug !== tag.slug)
+  const [categories, otherTags] = await Promise.all([
+    listCategories(),
+    listTags(40).then((tags) => tags.filter((t) => t.slug !== tag.slug)),
+  ])
 
   return (
     <div className="shell py-10 sm:py-14">
@@ -52,23 +62,27 @@ export default async function TagPage({
         <p className="eyebrow mb-3">Tag</p>
         <h1 className="font-display text-display-sm">#{tag.name}</h1>
         <p className="mt-3 max-w-prose text-base leading-relaxed text-muted">
-          {result.total.toLocaleString()} {result.total === 1 ? 'site carries' : 'sites carry'} this tag. Tags are
-          assigned automatically from a fixed vocabulary, so they stay consistent across the catalogue.
+          Tags are assigned automatically from a fixed vocabulary, so they stay consistent across the catalogue —
+          every site carrying this one is below.
         </p>
       </header>
 
       <div className="mb-8">
-        <FilterBar base={base} query={{ ...query, tag: undefined }} categories={await listCategories()} total={result.total} />
+        <FilterBar
+          base={base}
+          query={barQuery}
+          categories={categories}
+          total={
+            <Suspense fallback={<CountSkeleton width="w-16" />}>
+              <ResultCount of={results} />
+            </Suspense>
+          }
+        />
       </div>
 
-      {result.sites.length === 0 ? (
-        <EmptyState title="Nothing here right now" description="Try loosening the filters." />
-      ) : (
-        <>
-          <SiteGrid sites={result.sites} signedIn={Boolean(user)} />
-          <Pagination base={base} query={{ ...query, tag: undefined }} page={result.page} pages={result.pages} />
-        </>
-      )}
+      <Suspense key={JSON.stringify(query)} fallback={<GridSkeleton count={6} />}>
+        <TagResults results={results} base={base} query={barQuery} signedIn={Boolean(user)} />
+      </Suspense>
 
       {otherTags.length > 0 && (
         <section className="mt-16 border-t border-line pt-8">
@@ -83,5 +97,28 @@ export default async function TagPage({
         </section>
       )}
     </div>
+  )
+}
+
+async function TagResults({
+  results,
+  base,
+  query,
+  signedIn,
+}: {
+  results: Promise<Results>
+  base: string
+  query: BrowseQuery
+  signedIn: boolean
+}) {
+  const result = await results
+  if (result.sites.length === 0) {
+    return <EmptyState title="Nothing here right now" description="Try loosening the filters." />
+  }
+  return (
+    <>
+      <SiteGrid sites={result.sites} signedIn={signedIn} />
+      <Pagination base={base} query={query} page={result.page} pages={result.pages} />
+    </>
   )
 }

@@ -1,13 +1,18 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getCategory, listCategories, listSites, tagsForCategory } from '@/lib/queries/sites'
 import { CATEGORY_SEEDS } from '@/lib/taxonomy'
 import { SiteGrid } from '@/components/site/site-card'
-import { FilterBar, Pagination, parseQuery } from '@/components/filter-bar'
+import type { BrowseQuery } from '@/components/filter-bar'
+import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
+import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
 import { EmptyState, ButtonLink } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
+
+type Results = Awaited<ReturnType<typeof listSites>>
 
 export async function generateStaticParams() {
   return CATEGORY_SEEDS.map((c) => ({ slug: c.slug }))
@@ -38,8 +43,10 @@ export default async function CategoryPage({
   const query = parseQuery(await searchParams)
   const user = await getCurrentUser()
   const base = `/category/${category.slug}`
+  const barQuery: BrowseQuery = { ...query, category: undefined }
 
-  const result = await listSites({
+  // Kicked off before the header renders; awaited by the counter and the grid.
+  const results = listSites({
     category: category.slug,
     tag: query.tag,
     sort: query.sort,
@@ -49,8 +56,9 @@ export default async function CategoryPage({
     userId: user?.id,
     seed: Number(new Date().toISOString().slice(8, 10)) * 613 + 7,
   })
+  results.catch(() => {})
 
-  const tags = await tagsForCategory(category.slug, 24)
+  const [categories, tags] = await Promise.all([listCategories(), tagsForCategory(category.slug, 24)])
 
   return (
     <div>
@@ -74,35 +82,61 @@ export default async function CategoryPage({
         <div className="mb-8">
           <FilterBar
             base={base}
-            query={{ ...query, category: undefined }}
-            categories={await listCategories()}
+            query={barQuery}
+            categories={categories}
             tags={tags}
-            total={result.total}
+            total={
+              <Suspense fallback={<CountSkeleton width="w-16" />}>
+                <ResultCount of={results} />
+              </Suspense>
+            }
           />
         </div>
 
-        {result.sites.length === 0 ? (
-          <EmptyState
-            title="Nothing on this shelf yet"
-            description="Either the filters are too narrow, or we simply have not found anything for this category. Both are fixable."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <ButtonLink href={base} variant="secondary">
-                  Clear filters
-                </ButtonLink>
-                <ButtonLink href="/submit" variant="primary">
-                  Submit a site
-                </ButtonLink>
-              </div>
-            }
-          />
-        ) : (
-          <>
-            <SiteGrid sites={result.sites} signedIn={Boolean(user)} />
-            <Pagination base={base} query={{ ...query, category: undefined }} page={result.page} pages={result.pages} />
-          </>
-        )}
+        <Suspense key={JSON.stringify(query)} fallback={<GridSkeleton count={6} />}>
+          <CategoryResults results={results} base={base} query={barQuery} signedIn={Boolean(user)} />
+        </Suspense>
       </div>
     </div>
+  )
+}
+
+async function CategoryResults({
+  results,
+  base,
+  query,
+  signedIn,
+}: {
+  results: Promise<Results>
+  base: string
+  query: BrowseQuery
+  signedIn: boolean
+}) {
+  const result = await results
+
+  if (result.sites.length === 0) {
+    return (
+      <EmptyState
+        title="Nothing on this shelf yet"
+        description="Either the filters are too narrow, or we simply have not found anything for this category. Both are fixable."
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <ButtonLink href={base} variant="secondary">
+              Clear filters
+            </ButtonLink>
+            <ButtonLink href="/submit" variant="primary">
+              Submit a site
+            </ButtonLink>
+          </div>
+        }
+      />
+    )
+  }
+
+  return (
+    <>
+      <SiteGrid sites={result.sites} signedIn={signedIn} />
+      <Pagination base={base} query={query} page={result.page} pages={result.pages} />
+    </>
   )
 }

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
@@ -5,9 +6,13 @@ import { getCurrentUser } from '@/lib/session'
 import { listCategories, listSites, listTags } from '@/lib/queries/sites'
 import { SiteGrid } from '@/components/site/site-card'
 import { ButtonLink, EmptyState } from '@/components/ui/primitives'
-import { FilterBar, Pagination, parseQuery } from '@/components/filter-bar'
+import type { BrowseQuery } from '@/components/filter-bar'
+import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
+import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
 
 export const dynamic = 'force-dynamic'
+
+type Results = Awaited<ReturnType<typeof listSites>>
 
 export async function generateMetadata({
   searchParams,
@@ -35,11 +40,10 @@ export default async function SearchPage({
   const term = query.q ?? ''
   const user = await getCurrentUser()
 
-  const categories = await listCategories()
-  const tags = await listTags(20)
-
-  const result = term
-    ? await listSites({
+  // Start the search before anything is awaited, so the round trip overlaps
+  // with the category and tag lookups the filter bar needs.
+  const results = term
+    ? listSites({
         q: term,
         category: query.category,
         tag: query.tag,
@@ -49,7 +53,10 @@ export default async function SearchPage({
         perPage: 24,
         userId: user?.id,
       })
-    : { sites: [], total: 0, page: 1, perPage: 24, pages: 0 }
+    : null
+  results?.catch(() => {})
+
+  const [categories, tags] = await Promise.all([listCategories(), listTags(20)])
 
   return (
     <div className="shell py-10 sm:py-14">
@@ -58,8 +65,7 @@ export default async function SearchPage({
         <h1 className="font-display text-display-sm">
           {term ? (
             <>
-              {result.total.toLocaleString()} {result.total === 1 ? 'result' : 'results'} for{' '}
-              <span className="text-muted">“{term}”</span>
+              Results for <span className="text-muted">“{term}”</span>
             </>
           ) : (
             'Search the catalogue'
@@ -73,32 +79,25 @@ export default async function SearchPage({
         )}
       </header>
 
-      {term && (
-        <div className="mb-8">
-          <FilterBar base="/search" query={query} categories={categories} tags={tags} total={result.total} />
-        </div>
-      )}
-
-      {term && result.sites.length === 0 ? (
-        <EmptyState
-          icon={<SearchX className="h-8 w-8" />}
-          title={`Nothing matched “${term}”`}
-          description="web-amble only indexes whole websites, not individual pages — so try a broader term, or tell us about the site we are missing."
-          action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <ButtonLink href={`/submit?url=${encodeURIComponent(term)}`} variant="primary">
-                Submit a site
-              </ButtonLink>
-              <ButtonLink href="/browse" variant="secondary">
-                Browse instead
-              </ButtonLink>
-            </div>
-          }
-        />
-      ) : term ? (
+      {results ? (
         <>
-          <SiteGrid sites={result.sites} signedIn={Boolean(user)} />
-          <Pagination base="/search" query={query} page={result.page} pages={result.pages} />
+          <div className="mb-8">
+            <FilterBar
+              base="/search"
+              query={query}
+              categories={categories}
+              tags={tags}
+              total={
+                <Suspense fallback={<CountSkeleton width="w-20" />}>
+                  <ResultCount of={results} noun="result" />
+                </Suspense>
+              }
+            />
+          </div>
+
+          <Suspense key={JSON.stringify(query)} fallback={<GridSkeleton count={6} />}>
+            <SearchResults results={results} term={term} query={query} signedIn={Boolean(user)} />
+          </Suspense>
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -115,5 +114,46 @@ export default async function SearchPage({
         </div>
       )}
     </div>
+  )
+}
+
+async function SearchResults({
+  results,
+  term,
+  query,
+  signedIn,
+}: {
+  results: Promise<Results>
+  term: string
+  query: BrowseQuery
+  signedIn: boolean
+}) {
+  const result = await results
+
+  if (result.sites.length === 0) {
+    return (
+      <EmptyState
+        icon={<SearchX className="h-8 w-8" />}
+        title={`Nothing matched “${term}”`}
+        description="web-amble only indexes whole websites, not individual pages — so try a broader term, or tell us about the site we are missing."
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <ButtonLink href={`/submit?url=${encodeURIComponent(term)}`} variant="primary">
+              Submit a site
+            </ButtonLink>
+            <ButtonLink href="/browse" variant="secondary">
+              Browse instead
+            </ButtonLink>
+          </div>
+        }
+      />
+    )
+  }
+
+  return (
+    <>
+      <SiteGrid sites={result.sites} signedIn={signedIn} />
+      <Pagination base="/search" query={query} page={result.page} pages={result.pages} />
+    </>
   )
 }

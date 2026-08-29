@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import type { Category, SortKey, Tag } from '@/lib/types'
@@ -50,7 +51,8 @@ export function FilterBar({
   query: BrowseQuery
   categories: Category[]
   tags?: Tag[]
-  total: number
+  /** usually <ResultCount>, wrapped in Suspense; omit to hide the counter */
+  total?: React.ReactNode
 }) {
   const activeCount = query.attrs.length + (query.category ? 1 : 0) + (query.tag ? 1 : 0)
 
@@ -79,10 +81,10 @@ export function FilterBar({
         </div>
 
         <p className="shrink-0 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
-          {total.toLocaleString()} {total === 1 ? 'site' : 'sites'}
+          {total}
           {activeCount > 0 && (
             <>
-              {' · '}
+              {total != null && ' · '}
               <Link href={buildHref(base, query, { attrs: [], category: undefined, tag: undefined, page: 1 })} className="text-muted">
                 clear filters
               </Link>
@@ -267,4 +269,18 @@ export function parseQuery(params: Record<string, string | string[] | undefined>
     attrs: many(params.attr).filter((a) => validAttrs.has(a)),
     page: Math.max(1, Number(one(params.page) ?? 1) || 1),
   }
+}
+
+/**
+ * The count and the grid come out of one `listSites` call, so a page creates
+ * that promise once and hands the *same* promise to both: a single round trip
+ * with two consumers that stream independently.
+ */
+export async function ResultCount({ of, noun = 'site' }: { of: Promise<{ total: number }>; noun?: string }) {
+  const { total } = await of
+  return (
+    <>
+      {total.toLocaleString()} {total === 1 ? noun : `${noun}s`}
+    </>
+  )
 }
