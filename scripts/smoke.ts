@@ -145,6 +145,7 @@ const routes: [string, number[]?][] = [
   ['/this-page-does-not-exist', [404]],
   // admin is session-gated; unauthenticated should be redirected, never 500
   ['/admin', [200, 302, 307, 404]],
+  ['/admin/people', [200, 302, 307, 404]],
 ]
 
 if (site) {

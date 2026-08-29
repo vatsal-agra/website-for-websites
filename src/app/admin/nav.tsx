@@ -2,15 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Activity,
-  Flag,
-  Gauge,
-  Globe2,
-  Inbox,
-  Layers,
-  Radar,
-} from 'lucide-react'
+import { Activity, Flag, Gauge, Globe2, Inbox, Layers, Radar, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ITEMS = [
@@ -21,6 +13,7 @@ const ITEMS = [
   { href: '/admin/sources', label: 'Discovery', icon: Radar },
   { href: '/admin/jobs', label: 'Jobs', icon: Activity, badge: 'failed' as const },
   { href: '/admin/reports', label: 'Reports', icon: Flag, badge: 'reports' as const },
+  { href: '/admin/people', label: 'People', icon: Users },
 ]
 
 export function AdminNav({

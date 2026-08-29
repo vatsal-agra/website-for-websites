@@ -29,13 +29,23 @@ export default async function LoginPage({
       title="Welcome back"
       subtitle="Sign in to save sites, upvote what you like and build collections."
       footer={
-        <p className="text-sm text-muted">
-          No account yet?{' '}
-          <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ink">
-            Create one
-          </Link>
-          .
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm text-muted">
+            No account yet?{' '}
+            <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ink">
+              Create one
+            </Link>
+            .
+          </p>
+          <p className="text-xs leading-relaxed text-faint">
+            Forgotten your password? web-amble sends no email — there is no address on file to send a reset link
+            to — so an editor has to issue you a new one. Say so on{' '}
+            <Link href="/about" className="text-muted">
+              the about page
+            </Link>{' '}
+            and somebody will sort it out.
+          </p>
+        </div>
       }
     />
   )

@@ -277,6 +277,19 @@ Everything in `.env.local`, all with working defaults — see `.env.example`. Th
   page advertises its own through `<link rel="alternate">`.
 - `/sitemap.xml`, `/robots.txt`
 
+## Accounts, and the one thing they cannot do
+
+An account is optional — browsing, searching and shuffling all work signed out.
+With one you can upvote, save sites and build collections, and `/settings` lets
+you change your display name, bio and password, or delete the account outright.
+
+There is **no password reset**, because there is no email. Adding one would mean
+an SMTP provider, an API key and a deliverability problem, none of which this
+project has or wants. The consequence is real and the site says so on the sign-in
+page: somebody locked out needs an editor to issue them a new password from
+`/admin/people`. That is the trade — one fewer moving part in exchange for a
+manual step that happens rarely.
+
 ## Being a good citizen
 
 The crawler identifies as `AmbleBot`, requests one page per site, obeys `robots.txt` including
