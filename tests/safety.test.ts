@@ -57,6 +57,45 @@ describe('screenContent', () => {
     assert.equal(verdict.allowed, false)
   })
 
+  /**
+   * All of these were fetched by the real crawler and scored well: a login
+   * screen, an interstitial and a status dashboard all have a real title,
+   * https and a fast response. None of them is a website.
+   */
+  it('blocks pages that are machinery rather than websites', () => {
+    for (const title of [
+      'CAS – Central Authentication Service',
+      'Just a moment...',
+      'Sign in to Example',
+      'Neon — System Status',
+      'Index of /pub',
+      "You're invited to talk on Matrix",
+    ]) {
+      const verdict = screenContent(page({ title }))
+      assert.equal(verdict.allowed, false, `expected “${title}” to be rejected`)
+      assert.match(verdict.reason, /not a website/)
+    }
+  })
+
+  it('does not mistake ordinary sites for machinery', () => {
+    for (const title of [
+      'Status — a magazine about work',
+      'The Login Design Pattern Library',
+      'Moment.js',
+      'Redirecting: a short film',
+    ]) {
+      assert.equal(screenContent(page({ title })).allowed, true, `expected “${title}” to be allowed`)
+    }
+  })
+
+  it('blocks the business end of gambling, which reads like ordinary SaaS copy', () => {
+    const verdict = screenContent(
+      page({ textSample: 'the leading igaming platform provider — casino software for gambling operators' }),
+    )
+    assert.equal(verdict.allowed, false)
+    assert.match(verdict.reason, /gambling/)
+  })
+
   it('blocks a parked domain', () => {
     const verdict = screenContent(page({ signals: signals({ isParked: true }) }))
     assert.equal(verdict.allowed, false)

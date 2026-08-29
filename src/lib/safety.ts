@@ -24,7 +24,37 @@ const SCAM_TERMS = [
   'binary options signals', 'forex robot guaranteed', 'miracle cure', 'work from home $',
 ]
 
-const GAMBLING_TERMS = ['online casino', 'slots bonus', 'betting odds', 'sportsbook bonus', 'poker real money']
+const GAMBLING_TERMS = [
+  'online casino', 'slots bonus', 'betting odds', 'sportsbook bonus', 'poker real money',
+  // the business-to-business end of it, which reads like ordinary SaaS copy and
+  // scored 0.91 on the quality heuristic before this was here
+  'igaming', 'casino software', 'betting platform', 'gambling operators',
+]
+
+/**
+ * Pages that are machinery, not websites.
+ *
+ * The crawler fetches one URL and reads what comes back, and sometimes what
+ * comes back is a login screen, a status dashboard, an invite link or a
+ * Cloudflare interstitial. Every one of those looks like a perfectly good page
+ * to the quality heuristic — real title, https, fast response — and none of
+ * them is a website anybody wants to be shown.
+ *
+ * Matched against the title only, and with whole phrases, because "status" and
+ * "sign in" appear in the body of plenty of real sites.
+ */
+const NOT_A_WEBSITE_TITLES = [
+  'central authentication service',
+  'sign in to', 'log in to', 'login to', 'please sign in', 'please log in',
+  'you are being redirected', 'you have been logged out',
+  'system status', 'service status', 'status page', 'all systems operational',
+  'access denied', 'attention required', 'just a moment', 'one moment please',
+  'are you a robot', 'verify you are human', 'checking your browser',
+  'enable javascript', 'javascript is required', 'this page requires javascript',
+  'domain for sale', 'buy this domain', 'website coming soon',
+  'index of /', 'directory listing for',
+  "you're invited to talk on matrix", 'you are invited to talk on matrix',
+]
 
 const BAD_HOST_FRAGMENTS = [
   'porn', 'xxx', 'sexy', 'escort', 'casino', 'betting', 'warez', 'crack', 'torrent',
@@ -120,6 +150,12 @@ export async function screenUrl(url: NormalizedUrl): Promise<SafetyVerdict> {
 
 export function screenContent(meta: PageMetadata): SafetyVerdict {
   const text = `${meta.title} ${meta.description} ${meta.textSample}`.toLowerCase()
+
+  const title = meta.title.toLowerCase()
+  const machinery = NOT_A_WEBSITE_TITLES.find((phrase) => title.includes(phrase))
+  if (machinery) {
+    return { allowed: false, action: 'block', reason: `not a website (“${machinery}”)`, labels: ['not-a-site'] }
+  }
 
   const adult = hits(text, ADULT_TERMS)
   if (adult.length >= 2 || (adult.length === 1 && `${meta.title} ${meta.description}`.toLowerCase().includes(adult[0]))) {
