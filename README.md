@@ -196,6 +196,15 @@ full-text search, `sharp` for images. No API keys, no analytics, no telemetry.
 
 ---
 
+## When something looks broken
+
+`docs/debugging.md` collects the symptoms that were expensive to diagnose the
+first time — hanging pages, a paused database, stranded Suspense fallbacks,
+hydration failures, and the SQL that SQLite accepted but Postgres does not.
+Start there.
+
+---
+
 ## Scripts
 
 | Command | Purpose |
