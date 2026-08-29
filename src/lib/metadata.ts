@@ -214,10 +214,18 @@ export function parseMetadata(html: string, baseUrl: string): PageMetadata {
 
   const meta = (selector: string) => $(selector).attr('content') ?? ''
 
+  // `<title>` is also an SVG element, and an icon-heavy page with no document
+  // title has plenty of them. Taking the first one in document order listed a
+  // site as "Slash forward icon". Only a title outside an <svg> is the page's.
+  const documentTitle = $('title')
+    .filter((_, el) => $(el).parents('svg').length === 0)
+    .first()
+    .text()
+
   const rawTitle = firstNonEmpty(
     meta('meta[property="og:title"]'),
     meta('meta[name="twitter:title"]'),
-    $('title').first().text(),
+    documentTitle,
     $('h1').first().text(),
     parsedBase?.domain,
   )

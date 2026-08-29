@@ -47,6 +47,18 @@ describe('parseMetadata', () => {
     assert.equal(meta.lang, 'en')
   })
 
+  it('never mistakes an svg <title> for the page title', () => {
+    const meta = parseMetadata(
+      html(
+        `<svg viewBox="0 0 16 16"><title>Slash forward icon</title><path d="M0 0"/></svg>
+         <h1>Flags SDK</h1><p>Feature flags for anything.</p>`,
+        '', // no document <title>, as on a client-rendered page
+      ),
+      'https://flags-sdk.dev',
+    )
+    assert.equal(meta.title, 'Flags SDK')
+  })
+
   it('resolves relative urls against the page', () => {
     const meta = parseMetadata(html('', '<meta property="og:image" content="img/x.png">'), 'https://a.dev/blog/post')
     assert.equal(meta.imageUrl, 'https://a.dev/blog/img/x.png')
