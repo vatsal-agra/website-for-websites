@@ -121,6 +121,10 @@ five minutes.
 
 Nothing else is required — no Docker, no separate worker dyno, no object storage account.
 
+> The Supabase project and its database role are still named `portico`, from before
+> the rename. They are infrastructure identifiers that appear only in `DATABASE_URL`,
+> so they were left alone rather than risk a live connection string for cosmetics.
+
 ### Keeping it awake
 
 Free-tier Supabase projects **pause themselves when idle**, and a paused database takes the
