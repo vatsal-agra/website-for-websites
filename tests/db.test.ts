@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { toPositional } from '../src/lib/db'
+import { isReadOnly, isTransient, toPositional } from '../src/lib/db'
 
 /**
  * The whole query layer is written with `?` placeholders and rewritten to
@@ -49,5 +49,46 @@ describe('toPositional', () => {
       toPositional("SELECT 'it''s fine' AS x WHERE id = ?"),
       "SELECT 'it''s fine' AS x WHERE id = $1",
     )
+  })
+})
+
+/**
+ * These two decide whether a failed statement is run a second time. Getting
+ * `isReadOnly` wrong means replaying a write that may already have committed,
+ * so it errs towards saying no.
+ */
+describe('retrying a dropped connection', () => {
+  it('recognises the errors that mean the connection went away', () => {
+    for (const code of ['ECONNRESET', 'EPIPE', 'CONNECTION_CLOSED', '57P01', '08006']) {
+      assert.equal(isTransient({ code }), true, code)
+    }
+  })
+
+  it('does not retry a query the database actually rejected', () => {
+    // 42P01 undefined_table, 42703 undefined_column, 23505 unique_violation
+    for (const code of ['42P01', '42703', '23505', undefined]) {
+      assert.equal(isTransient({ code }), false, String(code))
+    }
+    assert.equal(isTransient(new Error('boom')), false)
+  })
+
+  it('retries reads, including CTEs and leading comments', () => {
+    assert.equal(isReadOnly('SELECT 1'), true)
+    assert.equal(isReadOnly('  \n select * from sites'), true)
+    assert.equal(isReadOnly('WITH t AS (SELECT 1) SELECT * FROM t'), true)
+    assert.equal(isReadOnly('-- a comment\nSELECT 1'), true)
+  })
+
+  it('never retries anything that writes', () => {
+    for (const query of [
+      'INSERT INTO sites (url) VALUES (?)',
+      'UPDATE sites SET votes = votes + 1',
+      'DELETE FROM jobs WHERE id = ?',
+      "INSERT INTO x SELECT * FROM y",
+      'CREATE INDEX foo ON sites(slug)',
+      'TRUNCATE sites',
+    ]) {
+      assert.equal(isReadOnly(query), false, query)
+    }
   })
 })

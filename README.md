@@ -241,7 +241,7 @@ checked, and never call the classifier AI, because it is a weighted lexicon.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Development server |
+| `npm run dev` | Development server. Runs through `scripts/dev.mjs`, which gives Next a 6 GB heap — see the note in that file for why |
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run worker` | Background worker — discovery, ingest, cover art, maintenance |
 | `npm run setup` | `db:migrate` + `db:seed` |

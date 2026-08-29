@@ -131,8 +131,38 @@ function release() {
   else active--
 }
 
-async function execute(query: string, args: any[]): Promise<any> {
-  const text = toPositional(query)
+/**
+ * Errors that mean "the connection went away", not "the query was wrong".
+ *
+ * A transaction pooler recycles connections underneath the driver, so a
+ * statement occasionally lands on one that is being closed. Postgres never saw
+ * it. Left alone this surfaces as a 500 on a page that would have rendered
+ * perfectly a second later — which is exactly what happened to
+ * `/browse?sort=top&attr=free` once, for no reason anybody could have found in
+ * the query.
+ */
+const TRANSIENT = new Set([
+  'ECONNRESET', 'EPIPE', 'ETIMEDOUT', 'ECONNREFUSED',
+  'CONNECTION_CLOSED', 'CONNECTION_ENDED', 'CONNECTION_DESTROYED',
+  '08000', '08003', '08006', '57P01', '57P02', '57P03',
+])
+
+export function isTransient(err: unknown): boolean {
+  const code = (err as any)?.code
+  return typeof code === 'string' && TRANSIENT.has(code)
+}
+
+/**
+ * Only a statement that changes nothing may be retried. An INSERT interrupted
+ * by a reset connection may or may not have committed, and running it twice is
+ * a worse outcome than an error page.
+ */
+export function isReadOnly(query: string): boolean {
+  return /^\s*(?:--[^\n]*\n|\s)*(?:select|with)\b/i.test(query)
+}
+
+/** One attempt: hold a slot for exactly as long as the statement runs. */
+async function attempt(query: string, text: string, args: any[]): Promise<any> {
   await acquire()
 
   if (!env.dbTrace) {
@@ -156,6 +186,18 @@ async function execute(query: string, args: any[]): Promise<any> {
     throw err
   } finally {
     release()
+  }
+}
+
+async function execute(query: string, args: any[]): Promise<any> {
+  const text = toPositional(query)
+  try {
+    return await attempt(query, text, args)
+  } catch (err) {
+    if (!isTransient(err) || !isReadOnly(query)) throw err
+    if (env.dbTrace) console.log('[db] .. the connection went away; retrying once')
+    await new Promise((r) => setTimeout(r, 120))
+    return attempt(query, text, args)
   }
 }
 

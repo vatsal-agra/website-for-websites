@@ -100,6 +100,34 @@ outage. Before believing that, query the database directly — `npx tsx` a two
 line script through `src/lib/db` and time it. If that comes back in 300ms, the
 database is fine and the *server* is wedged.
 
+**The usual cause is the heap.** Check it:
+
+```bash
+powershell -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { \$_.CommandLine -like '*start-server*' } | Select-Object WorkingSetSize"
+```
+
+Around two and a half gigabytes, against V8's default limit of about four, the
+dev server stops crashing and starts spending every request in garbage
+collection instead. It answers `/robots.txt` because that touches nothing, and
+nothing else at all. Growth is roughly fifty megabytes per handful of requests,
+faster with image generation, so this arrives within an hour of ordinary work.
+
+`npm run dev` goes through `scripts/dev.mjs`, which raises the limit to 6 GB
+(`DEV_HEAP_MB` to change it). That does not stop the growth — it buys a working
+session instead of twenty minutes. When it does happen, restart; nothing is
+lost.
+
+It is worth ruling the concurrency gate out once rather than suspecting it every
+time. With `DB_TRACE=1`, compare starts against finishes as you drive requests:
+
+```bash
+grep -c '^\[db .*\] ->' dev.log
+grep -cE '^\[db .*\] (<-|!!)' dev.log
+```
+
+Thirty-six page loads leaves those two numbers within one of each other. If they
+diverge, the gate is leaking slots and that *is* the bug.
+
 Look further up the log for:
 
 ```
@@ -115,6 +143,25 @@ The thing that used to trigger it here was `npm run smoke` itself: `fetch()`
 resolves on headers, and the script never read the bodies. It now drains every
 response, which both avoids the bug and is the only way to check a streamed page
 at all — see below.
+
+---
+
+## A page 500s once and then works
+
+```
+⨯ Error: read ECONNRESET
+ GET /browse?sort=top&attr=free 500 in 28.6s
+```
+
+The transaction pooler recycles connections underneath the driver, so a
+statement occasionally lands on one that is being closed. Postgres never saw
+it, and the same request succeeds a second later — which makes it very easy to
+spend an hour looking for a fault in a query that does not have one.
+
+`execute()` in `src/lib/db.ts` retries these once, and only for statements that
+change nothing. A write interrupted by a reset connection may or may not have
+committed, and running it twice is worse than an error page. `isTransient` and
+`isReadOnly` are exported and tested for exactly that reason.
 
 ---
 
