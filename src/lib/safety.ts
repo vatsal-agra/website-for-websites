@@ -41,8 +41,29 @@ export interface SafetyVerdict {
   labels: string[]
 }
 
+/**
+ * Match a flagged term against page text.
+ *
+ * Single words are anchored to a word start, so `xxx` cannot fire on a run of
+ * placeholder x's and `porn` cannot fire inside an unrelated word — while
+ * still catching `pornography`. Multi-word phrases are distinctive enough to
+ * match as plain substrings.
+ */
+const termPatterns = new Map<string, RegExp>()
+
+function matches(text: string, term: string): boolean {
+  if (term.includes(' ')) return text.includes(term)
+  let re = termPatterns.get(term)
+  if (!re) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    re = new RegExp(`\\b${escaped}`, 'i')
+    termPatterns.set(term, re)
+  }
+  return re.test(text)
+}
+
 function hits(text: string, terms: string[]): string[] {
-  return terms.filter((t) => text.includes(t))
+  return terms.filter((t) => matches(text, t))
 }
 
 /**

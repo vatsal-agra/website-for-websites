@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "web-amble — a storefront for the whole web. Discover, browse and submit websites.",
+  "description": "web-amble \u2014 a storefront for the whole web. Discover, browse and submit websites.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -20,7 +20,9 @@
     "ingest": "tsx scripts/ingest.ts",
     "discover": "tsx scripts/discover.ts",
     "rescore": "tsx scripts/rescore.ts",
-    "setup": "npm run db:migrate && npm run db:seed"
+    "setup": "npm run db:migrate && npm run db:seed",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "test:watch": "node --import tsx --test --watch \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
