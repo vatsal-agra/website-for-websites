@@ -262,7 +262,7 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
               <Row label="Found via">
                 <span className="capitalize">{site.source.replace(/[-_]/g, ' ')}</span>
               </Row>
-              <Row label="Quality score">
+              <Row label="Page score">
                 <span className="inline-flex items-center gap-2">
                   <span className="h-1.5 w-16 overflow-hidden rounded-full bg-line">
                     <span
@@ -282,6 +282,12 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
                 </Row>
               ) : null}
             </dl>
+
+            <p className="mt-4 text-xs leading-relaxed text-faint">
+              The page score is what the crawler made of the page it fetched — enough to read or use, links out
+              to the rest of the web, not a parked domain or a sales funnel. It decides whether an entry is
+              listed without review and how it is ordered. It is not a verdict on whether the site is any good.
+            </p>
 
             <div className="mt-5 border-t border-line pt-4">
               <ReportButton slug={site.slug} />

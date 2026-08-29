@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import { ArrowUpRight, RefreshCw } from 'lucide-react'
 import { getCurrentUser } from '@/lib/session'
 import { randomSite, recordView } from '@/lib/queries/sites'
@@ -49,11 +50,16 @@ export default async function ShufflePage({
 
   const nextHref = `/shuffle?seen=${[...history, site.id].slice(-HISTORY).join('.')}`
 
-  try {
-    await recordView(site.id)
-  } catch {
-    /* ignore */
-  }
+  // counted after the response is sent, like every other view — two writes on
+  // the critical path of a page whose whole appeal is how fast the next one
+  // arrives is two too many
+  after(async () => {
+    try {
+      await recordView(site.id)
+    } catch {
+      /* view counting must never break the page */
+    }
+  })
 
   return (
     <div className="shell flex min-h-[calc(100dvh-4rem)] flex-col justify-center py-10">
