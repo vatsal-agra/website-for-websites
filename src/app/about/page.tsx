@@ -64,10 +64,18 @@ export default async function AboutPage() {
               the tag list from degenerating into meta-keyword soup.
             </li>
             <li>
-              <strong>Scoring.</strong> A quality score is computed from things visible on the page: does it have a
-              real description, does it work on a phone, is it drowning in ad networks, is it a parked domain, how
-              fast did it respond. Above a threshold, a discovered site is listed automatically. Everything else,
-              and every human submission, waits for review.
+              <strong>Scoring.</strong> A quality score is computed from things visible on the page. Mostly:
+              is there anything here to read or use, does it link out to the rest of the web, is it drowning in
+              ad networks, is it a parked domain — and does it read like a sales funnel, which counts against it.
+              Polished social metadata counts for almost nothing, on purpose. A company with a marketing team has
+              perfect metadata and that says nothing about whether the site is worth your time; some of the best
+              things on the web are a plain page with seventy links on it.
+            </li>
+            <li>
+              <strong>Deciding.</strong> Above a threshold, a discovered site is listed automatically. Everything
+              else, and every human submission, waits for a person to look at it. The score is a filter, not a
+              judge — it cannot tell an excellent company website from an excellent independent one, so anything
+              ambiguous goes to the queue rather than straight onto a shelf.
             </li>
           </ol>
 

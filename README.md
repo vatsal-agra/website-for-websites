@@ -46,7 +46,7 @@ Every URL — submitted or discovered — goes through the same path:
 | **Fetch** | One polite request: robots.txt respected, per-host delay, byte cap, timeout | `src/lib/fetcher.ts` |
 | **Parse** | Title, description, og:image, favicon, feeds, language, outbound links, ad/paywall/parked signals | `src/lib/metadata.ts` |
 | **Classify** | Weighted lexicon picks 1 of 16 categories and up to 6 tags from a fixed vocabulary | `src/lib/classify.ts` |
-| **Score** | Quality 0–1 from page evidence: description, viewport, https, ad networks, word count, response time | `src/lib/classify.ts` |
+| **Score** | Quality 0–1 from page evidence — what there is to read, whether the page links out, whether it reads like a sales funnel | `src/lib/classify.ts` |
 | **Store** | Insert, build the search vector, queue cover art, harvest outbound links as new candidates | `src/lib/ingest.ts` |
 
 Discovered sites scoring above `AUTO_APPROVE_QUALITY` go live automatically. Everything else — and
@@ -60,7 +60,34 @@ Three source types, all free and keyless, managed at `/admin/sources`:
 - **RSS/Atom** — link blogs (Lobsters, Kottke, Waxy, Sidebar), optionally harvesting links inside each entry
 - **Link graph** — re-reads sites already in the catalogue and follows their outbound links
 
-Good sites link to good sites. That turns out to be most of the signal you need.
+Good sites link to good sites. That turns out to be most of the signal you need — with one
+correction. Draining candidates strictly by score walks the graph breadth-first out of whichever
+neighbourhood happens to rank highest, and a directory fills up with twelve variations on the same
+documentation site. Each drain takes at most two candidates per discovering domain, so every
+neighbourhood gets a turn.
+
+### What the quality score is for
+
+It gates auto-listing, and it is a ranking input for the category shelves and hidden gems. That
+second job is why its balance matters as much as its threshold.
+
+An earlier version paid +0.31 for social metadata — description, `og:image`, viewport, structured
+data — against +0.07 for having anything to read. Corporate landing pages have a marketing team and
+therefore perfect metadata, so they scored above 0.90; the Encyclopedia of Integer Sequences scored
+0.45, below the floor for appearing on a shelf at all. The directory was ranking adverts above the
+things people come to a directory to find.
+
+Now metadata buys almost nothing, substance buys a lot, sales-funnel vocabulary is a penalty, and
+word count is never read on its own — a one-page marketing app inlines 17,000 words behind six links
+while OEIS has 140 words and seventy-two, so depth only counts when a page is navigable too.
+
+```bash
+npm run score -- https://oeis.org https://some-saas.com
+```
+
+prints the score, the category and every term that contributed, against the live page. What it still
+cannot do is tell an excellent company website from an excellent independent one. That is what the
+review queue is for.
 
 ### Ranking
 
@@ -138,10 +165,10 @@ web-amble detects this case and says so plainly rather than surfacing the driver
 ### Before you deploy
 
 ```bash
-npm test          # 74 unit tests over the pure logic
+npm test          # 77 unit tests over the pure logic
 npm run typecheck
 npm run build     # succeeds even with no DATABASE_URL set
-npm run smoke     # every route type against a running server
+npm run smoke     # every route type against a running server, read to the last byte
 ```
 
 Then check, in order:
@@ -199,9 +226,13 @@ full-text search, `sharp` for images. No API keys, no analytics, no telemetry.
 ## When something looks broken
 
 `docs/debugging.md` collects the symptoms that were expensive to diagnose the
-first time — hanging pages, a paused database, stranded Suspense fallbacks,
-hydration failures, and the SQL that SQLite accepted but Postgres does not.
-Start there.
+first time — hanging pages, a paused database, a dev server wedged by a
+cancelled stream, stranded Suspense fallbacks, hydration failures, and the SQL
+that SQLite accepted but Postgres does not. Start there.
+
+`docs/launch.md` has the launch copy: what to post where, and the two rules for
+writing about this project — never quote a catalogue number you have not just
+checked, and never call the classifier AI, because it is a weighted lexicon.
 
 ---
 
@@ -220,6 +251,7 @@ Start there.
 | `npm run ingest -- <url> [--approve]` | Catalogue specific URLs from the CLI |
 | `npm run discover -- --jobs 40` | Run every source once and process the queue |
 | `npm run rescore` | Queue a re-crawl of anything without an evidence-based quality score (`-- --all` for everything) |
+| `npm run score -- <url>` | Fetch a page and print what the ingester would make of it — score, category and every contributing term |
 | `npm run inspect` | Health readout: counts, cover art coverage, category spread, current top of the catalogue |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -228,13 +260,19 @@ Start there.
 Everything in `.env.local`, all with working defaults — see `.env.example`. The ones worth knowing:
 
 - `AUTO_APPROVE_QUALITY` — quality threshold for auto-listing discovered sites (`0` to review everything)
+- `WORKER_BATCH` — jobs the worker takes per tick. The throttle that keeps background work from
+  starving page renders; on a small shared database, six is enough to make pages time out
 - `CRAWLER_HOST_DELAY_MS`, `CRAWLER_CONCURRENCY`, `CRAWLER_RESPECT_ROBOTS` — crawler politeness
 - `SCREENSHOTS_ENABLED=1` — real screenshots, after `npm i -D playwright && npx playwright install chromium`
 
 ## Public endpoints
 
 - `/api/sites` — read-only JSON API with the same filters as `/browse`
+- `/api/search?q=` — the same search the command palette uses
 - `/feed.xml` — RSS of newest listings
+- `/category/<slug>/feed.xml`, `/tag/<slug>/feed.xml`, `/collections/<slug>/feed.xml` — RSS for one
+  shelf, so you can follow the corner of the catalogue you care about rather than all of it. Each
+  page advertises its own through `<link rel="alternate">`.
 - `/sitemap.xml`, `/robots.txt`
 
 ## Being a good citizen
