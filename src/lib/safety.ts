@@ -119,15 +119,33 @@ export function invalidateBlocklist() {
   blocklistCache = null
 }
 
-/** Add a hostname to the blocklist so the crawler stops finding it again. */
-export async function addBlocklistEntry(host: string, reason = ''): Promise<void> {
+/**
+ * Add a hostname to the blocklist so the crawler stops finding it again, and
+ * drop what it has already contributed.
+ *
+ * The second half matters more than it sounds. Blocking a domain stops that
+ * domain being listed, but the link graph harvests sixty outbound links from
+ * every page it reads — so a neighbourhood you have just decided against
+ * carries on feeding the queue through its neighbours. Twenty-four
+ * institutional sites left two hundred queued candidates behind, pointing at
+ * more of the same. Deciding against a domain means deciding against its
+ * unexamined recommendations too.
+ */
+export async function addBlocklistEntry(host: string, reason = ''): Promise<number> {
   const pattern = host.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-  if (!pattern.includes('.')) return
+  if (!pattern.includes('.')) return 0
   await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [
     pattern,
     reason.slice(0, 200),
   ])
   invalidateBlocklist()
+
+  const dropped = await run(
+    `UPDATE candidates SET status = 'skipped', note = ?
+     WHERE status = 'queued' AND (found_from = ? OR found_from LIKE ?)`,
+    [`discovered from ${pattern}, which was blocklisted`, pattern, `%.${pattern}`],
+  )
+  return dropped.rowsAffected
 }
 
 export async function isBlocklisted(url: NormalizedUrl): Promise<string | null> {
