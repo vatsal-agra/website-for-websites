@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { after } from 'next/server'
-import { ArrowUpRight, Globe, Layers, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Globe, History, Layers, ShieldCheck, Sparkles } from 'lucide-react'
 import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/session'
 import { getSiteBySlug, recordView, relatedSites, bestOfCategory } from '@/lib/queries/sites'
@@ -19,7 +19,7 @@ import { ReportButton, SaveButton, ShareButton, VisitLink, VoteButton } from '@/
 import { AddToCollection } from '@/components/site/add-to-collection'
 import { SiteCard } from '@/components/site/site-card'
 import { Shelf } from '@/components/shelf'
-import { Badge, SectionHeader } from '@/components/ui/primitives'
+import { Badge, SectionHeader, buttonClass } from '@/components/ui/primitives'
 import { RelativeTime } from '@/components/relative-time'
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +45,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       // entirely for the many sites that publish none, and would drop the
       // category and tagline that make a shared link legible.
     },
+    // An archived record is worth reading and not worth ranking: it describes a
+    // site that no longer answers, and search engines should not send people to
+    // it ahead of whatever replaced it.
     robots: site.status === 'approved' ? { index: true, follow: true } : { index: false, follow: false },
   }
 }
@@ -55,7 +58,14 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
   const site = await getSiteBySlug(slug, user?.id)
 
   if (!site) notFound()
-  if (site.status !== 'approved' && user?.role !== 'admin') notFound()
+  // An archived entry is a site that stopped answering, not a mistake. The
+  // record stays readable — people arrive here from links elsewhere, and "this
+  // used to exist, here is what it was" is more use than a 404. Pending and
+  // rejected entries are a different thing and stay hidden.
+  const archived = site.status === 'archived'
+  if (site.status !== 'approved' && !archived && user?.role !== 'admin') notFound()
+
+  const waybackUrl = `https://web.archive.org/web/2020/${site.url}`
 
   // Counted after the response is sent. A Suspense boundary that renders
   // nothing is not a real boundary — it left an empty one behind that broke
@@ -88,7 +98,38 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
 
-      {site.status !== 'approved' && (
+      {archived && (
+        <div className="border-b border-line bg-raised">
+          <div className="shell flex flex-wrap items-center gap-x-3 gap-y-1 py-3 text-sm">
+            {/* An entry reaches this state two ways — it stopped answering, or an
+                editor retired it — and saying the wrong one would be inventing a
+                reason. `dead_strikes` is the only thing that can tell them apart. */}
+            {site.dead_strikes >= 3 ? (
+              <>
+                <strong className="text-ink">This site stopped answering.</strong>
+                <span className="text-muted">
+                  Three checks in a row failed
+                  {site.checked_at ? (
+                    <>
+                      , the last <RelativeTime value={site.checked_at} />
+                    </>
+                  ) : null}
+                  . The record is kept; the site is no longer on the shelves.
+                </span>
+              </>
+            ) : (
+              <>
+                <strong className="text-ink">This entry has been retired.</strong>
+                <span className="text-muted">
+                  {site.reject_reason || 'It is no longer on the shelves. The record is kept.'}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {site.status !== 'approved' && !archived && (
         <div className="border-b border-warning/30 bg-warning/10">
           <div className="shell py-2.5 text-sm text-warning">
             Admin preview — this site is <strong>{site.status}</strong> and is not publicly visible.
@@ -160,18 +201,43 @@ export default async function SitePage({ params }: { params: Promise<{ slug: str
 
               {/* actions */}
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <VisitLink slug={site.slug} url={site.url}>
-                  Visit {site.domain}
-                  <ArrowUpRight className="h-4 w-4" />
-                </VisitLink>
-                <VoteButton
-                  slug={site.slug}
-                  votes={site.votes}
-                  voted={site.viewerVoted}
-                  signedIn={Boolean(user)}
-                />
-                <SaveButton slug={site.slug} saved={site.viewerSaved} signedIn={Boolean(user)} variant="full" />
-                <AddToCollection slug={site.slug} signedIn={Boolean(user)} />
+                {archived ? (
+                  <>
+                    <a
+                      href={waybackUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={buttonClass('primary', 'lg')}
+                    >
+                      <History className="h-4 w-4" />
+                      Find it in the Wayback Machine
+                    </a>
+                    <a
+                      href={`/go/${site.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={buttonClass('secondary', 'lg')}
+                    >
+                      Try {site.domain} anyway
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <VisitLink slug={site.slug} url={site.url}>
+                      Visit {site.domain}
+                      <ArrowUpRight className="h-4 w-4" />
+                    </VisitLink>
+                    <VoteButton
+                      slug={site.slug}
+                      votes={site.votes}
+                      voted={site.viewerVoted}
+                      signedIn={Boolean(user)}
+                    />
+                    <SaveButton slug={site.slug} saved={site.viewerSaved} signedIn={Boolean(user)} variant="full" />
+                    <AddToCollection slug={site.slug} signedIn={Boolean(user)} />
+                  </>
+                )}
                 <ShareButton url={`${env.siteUrl}/site/${site.slug}`} title={site.title} />
               </div>
 
