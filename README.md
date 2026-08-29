@@ -15,7 +15,7 @@ collections, search, or press **Shuffle** and land somewhere they would never ha
 
 ```bash
 npm install
-npm run setup      # create the database, seed 240+ hand-catalogued sites
+npm run setup      # create the database, seed 383 hand-catalogued sites
 npm run dev        # http://localhost:3000
 ```
 
@@ -212,7 +212,7 @@ src/
     jobs.ts handlers.ts  job queue and its handlers
     sources/           discovery adapters
     queries/           all SQL
-    seed/              the 240-site founding catalogue
+    seed/              the 383-site founding catalogue, waves a–e
 workers/worker.ts      the background loop (local / VPS)
 netlify/functions/     scheduled worker tick (serverless)
 scripts/               migrate · seed · reset · repair · dedupe · ingest · discover · inspect
