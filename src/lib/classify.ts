@@ -183,7 +183,28 @@ export function deriveAttributes(meta: PageMetadata): SiteAttributes {
 
 /**
  * A 0..1 estimate of "is this worth a slot on the shelf".
- * Deliberately conservative: it gates auto-approval of crawled sites.
+ *
+ * Two jobs: it gates auto-approval of crawled sites, and it is a ranking input
+ * for the trending and hidden-gems shelves. The second is why the balance
+ * matters as much as the threshold.
+ *
+ * An earlier version handed out +0.31 for social metadata — a description, an
+ * OG image, OG tags, a viewport, structured data — against +0.07 for having
+ * anything to read. The result was exactly backwards. Corporate landing pages,
+ * which have a marketing team and therefore perfect metadata, scored 0.90 and
+ * above; the Online Encyclopedia of Integer Sequences scored 0.45, and
+ * neal.fun 0.46. The catalogue was ranking adverts above the things people
+ * actually come here to find.
+ *
+ * So: metadata now buys almost nothing, substance buys a lot, and a page that
+ * reads like a sales funnel is penalised for it. A well-made plain page should
+ * beat a beautifully-tagged brochure, because to a reader it does.
+ *
+ * What this still cannot do is tell an excellent company website from an
+ * excellent independent one — a genuinely good product page scores like a good
+ * page, because it is one. That is what the review queue is for, and why the
+ * auto-approve threshold stays where it is rather than being lowered to catch
+ * more of the crawl.
  */
 export function scoreQuality(meta: PageMetadata, http: { status: number; elapsedMs: number; https: boolean }): {
   score: number
@@ -195,38 +216,69 @@ export function scoreQuality(meta: PageMetadata, http: { status: number; elapsed
 
   const add = (delta: number, why: string) => {
     score += delta
-    if (Math.abs(delta) >= 0.04) reasons.push(`${delta > 0 ? '+' : ''}${delta.toFixed(2)} ${why}`)
+    if (Math.abs(delta) >= 0.03) reasons.push(`${delta > 0 ? '+' : ''}${delta.toFixed(2)} ${why}`)
   }
 
-  if (meta.title && meta.title.length > 3) add(0.08, 'has a real title')
-  if (meta.description.length >= 60) add(0.12, 'meaningful description')
-  else if (meta.description.length >= 20) add(0.05, 'short description')
-  else add(-0.1, 'no description')
-
-  if (meta.imageUrl) add(0.08, 'social image')
-  if (s.hasOpenGraph) add(0.04, 'open graph tags')
-  if (s.hasViewport) add(0.05, 'mobile viewport')
-  if (s.hasStructuredData) add(0.02, 'structured data')
-  if (meta.feeds.length) add(0.04, 'publishes a feed')
+  // --- is this a real page at all -----------------------------------------
+  if (meta.title && meta.title.length > 3) add(0.06, 'has a real title')
   if (http.https) add(0.05, 'https')
   else add(-0.12, 'no https')
+  if (http.status >= 400) add(-0.5, `http ${http.status}`)
+  if (s.isParked) add(-0.6, 'looks like a parked domain')
+  if (s.hasLoginWall) add(-0.16, 'login wall')
+  if (s.hasPaywallHint) add(-0.1, 'paywall detected')
+  if (s.hasAdScripts) add(-0.14, 'ad networks present')
 
-  if (s.wordCount > 250) add(0.07, 'substantive content')
+  // --- is there anything here ---------------------------------------------
+  //
+  // Word count alone reads two very different pages as blank. The front door
+  // of the Encyclopedia of Integer Sequences is a search box and 140 words;
+  // neal.fun's is a wall of links and 51. Both are doorways to an enormous
+  // amount of work. Meanwhile a single-page marketing app inlines seventeen
+  // thousand words of copy behind six links and looks like a library.
+  //
+  // Internal links tell those apart: 72 and 44 for the first two, 6 for the
+  // third. So depth counts only when the page is also navigable, and a page
+  // with little text but many of its own pages is an index, not an empty room.
+  const isIndex = meta.internalLinkCount >= 30
+  const isDeep = s.wordCount >= 900 && meta.internalLinkCount >= 10
+
+  if (isDeep) add(0.13, 'a lot to read')
+  else if (s.wordCount >= 250) add(0.1, 'substantive content')
+  else if (isIndex) add(0.12, 'an index of its own work')
   else if (s.wordCount < 60) add(-0.14, 'almost no content')
 
-  if (s.headingCount >= 2) add(0.03, 'structured headings')
+  if (isIndex) add(0.05, 'many pages of its own')
+
+  if (s.headingCount >= 3) add(0.06, 'structured headings')
+  else if (s.headingCount >= 1) add(0.02, 'has a heading')
+
+  // A page that links out is part of the web rather than a destination trying
+  // to keep you. Cheap to fake, but nobody bothers.
+  if (meta.outboundLinks.length >= 8) add(0.07, 'links out generously')
+  else if (meta.outboundLinks.length >= 3) add(0.03, 'links out')
+
+  if (meta.feeds.length) add(0.07, 'publishes a feed')
   if (s.interactiveCount >= 6) add(0.04, 'interactive elements')
 
-  if (s.hasAdScripts) add(-0.14, 'ad networks present')
-  if (s.hasPaywallHint) add(-0.1, 'paywall detected')
-  if (s.hasLoginWall) add(-0.16, 'login wall')
-  if (s.isParked) add(-0.6, 'looks like a parked domain')
-  if (s.scriptCount > 60) add(-0.05, 'very script heavy')
+  // --- is it a thing, or an advert for a thing ----------------------------
+  if (s.funnelPhrases >= 5) add(-0.2, 'reads like a sales funnel')
+  else if (s.funnelPhrases >= 3) add(-0.12, 'marketing-heavy')
+  else if (s.funnelPhrases >= 2) add(-0.05, 'some marketing copy')
 
+  // --- presentation: worth a little, because the card looks better ---------
+  if (meta.description.length >= 60) add(0.05, 'meaningful description')
+  else if (meta.description.length >= 20) add(0.02, 'short description')
+  else add(-0.04, 'no description')
+
+  if (meta.imageUrl) add(0.03, 'social image')
+  if (s.hasViewport) add(0.02, 'mobile viewport')
+  if (s.hasOpenGraph) add(0.01, 'open graph tags')
+  if (s.hasStructuredData) add(0.01, 'structured data')
+
+  if (s.scriptCount > 60) add(-0.05, 'very script heavy')
   if (http.elapsedMs > 6000) add(-0.05, 'slow response')
   else if (http.elapsedMs < 900) add(0.03, 'fast response')
-
-  if (http.status >= 400) add(-0.5, `http ${http.status}`)
 
   return { score: Number(clamp(score, 0, 1).toFixed(3)), reasons }
 }

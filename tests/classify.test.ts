@@ -17,6 +17,7 @@ const signals = (over: Partial<PageSignals> = {}): PageSignals => ({
   hasManifest: false,
   hasOpenGraph: true,
   hasStructuredData: false,
+  funnelPhrases: 0,
   ...over,
 })
 
@@ -140,6 +141,63 @@ describe('scoreQuality', () => {
     ).score
     assert.ok(adverts < base)
     assert.ok(wall < base)
+  })
+
+  /**
+   * The regression this scorer exists to prevent.
+   *
+   * A corporate landing page has a marketing team, so its metadata is perfect:
+   * long description, OG image, structured data, the lot. A reference site
+   * built in 1996 has none of that and is the reason anyone visits a
+   * directory. The score used to rank the first far above the second.
+   */
+  it('ranks a plain reference page above a polished landing page', () => {
+    const reference = scoreQuality(
+      page({
+        title: 'The On-Line Encyclopedia of Integer Sequences',
+        description: '',
+        imageUrl: null,
+        outboundLinks: Array.from({ length: 12 }, (_, i) => `https://other-${i}.org`),
+        signals: signals({
+          wordCount: 1200,
+          headingCount: 4,
+          hasOpenGraph: false,
+          hasViewport: false,
+          hasStructuredData: false,
+        }),
+      }),
+      http,
+    )
+
+    const landingPage = scoreQuality(
+      page({
+        title: 'Acme — the all-in-one platform for modern teams',
+        description: 'Acme helps modern teams ship faster with an enterprise-grade platform they love.',
+        imageUrl: 'https://acme.com/og.png',
+        outboundLinks: ['https://twitter.com/acme'],
+        signals: signals({
+          wordCount: 700,
+          headingCount: 8,
+          hasStructuredData: true,
+          funnelPhrases: 6,
+        }),
+      }),
+      http,
+    )
+
+    assert.ok(
+      reference.score > landingPage.score,
+      `reference ${reference.score} should beat landing page ${landingPage.score}`,
+    )
+  })
+
+  it('penalises sales-funnel copy in proportion to how much there is', () => {
+    const score = (funnelPhrases: number) =>
+      scoreQuality(page({ description: 'x'.repeat(80), signals: signals({ funnelPhrases }) }), http).score
+
+    assert.equal(score(0), score(1), 'one stray phrase is not a funnel')
+    assert.ok(score(3) < score(1))
+    assert.ok(score(6) < score(3))
   })
 
   it('always returns a value between 0 and 1', () => {

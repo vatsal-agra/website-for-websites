@@ -16,6 +16,16 @@ export interface PageSignals {
   hasManifest: boolean
   hasOpenGraph: boolean
   hasStructuredData: boolean
+  /**
+   * How many distinct sales-funnel phrases appear on the page.
+   *
+   * This is the difference between a website and an advert for a company. A
+   * page selling something says "book a demo", "start your free trial",
+   * "trusted by 10,000 teams" and "contact sales"; a page that *is* something
+   * says none of them. Counting distinct phrases rather than occurrences keeps
+   * one prominent "Sign up" button from looking like a funnel.
+   */
+  funnelPhrases: number
 }
 
 export interface PageMetadata {
@@ -45,6 +55,25 @@ const ANALYTICS_PATTERNS = [
   'google-analytics', 'googletagmanager', 'plausible.io', 'fathom', 'matomo',
   'segment.com', 'mixpanel', 'hotjar', 'clarity.ms', 'umami',
 ]
+/**
+ * Sales-funnel vocabulary.
+ *
+ * Kept narrow on purpose. Every phrase here is one that a page which exists to
+ * convert a visitor uses and a page which exists to be read does not — no
+ * single generic word like "pricing" or "sign up", which plenty of good sites
+ * use once in a nav bar.
+ */
+const FUNNEL_PATTERNS = [
+  'book a demo', 'request a demo', 'schedule a demo', 'get a demo', 'watch the demo',
+  'start your free trial', 'start free trial', 'try it free', 'free trial',
+  'contact sales', 'talk to sales', 'talk to an expert', 'get a quote', 'request a quote',
+  'trusted by', 'loved by teams', 'join thousands of', 'used by thousands',
+  'no credit card required', 'cancel anytime', 'get started for free',
+  'enterprise-grade', 'best-in-class', 'industry-leading', 'all-in-one platform',
+  'unlock the power', 'supercharge your', 'take your business',
+  'roi', 'case studies', 'our customers', 'customer success stories',
+]
+
 const PAYWALL_PATTERNS = [
   'subscribe to continue', 'subscribers only', 'this article is for', 'paywall',
   'become a member to read', 'you have reached your limit', 'free articles remaining',
@@ -287,6 +316,7 @@ export function parseMetadata(html: string, baseUrl: string): PageMetadata {
     hasManifest: $('link[rel="manifest"]').length > 0,
     hasOpenGraph: $('meta[property^="og:"]').length > 0,
     hasStructuredData: $('script[type="application/ld+json"]').length > 0,
+    funnelPhrases: FUNNEL_PATTERNS.filter((p) => textLower.includes(p)).length,
   }
 
   return {

@@ -17,6 +17,7 @@ const signals = (over: Partial<PageSignals> = {}): PageSignals => ({
   hasManifest: false,
   hasOpenGraph: true,
   hasStructuredData: false,
+  funnelPhrases: 0,
   ...over,
 })
 
