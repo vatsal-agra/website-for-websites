@@ -9,6 +9,8 @@ import { SiteCard } from '@/components/site/site-card'
 import { CollectionCard } from '@/components/cards'
 import { EmptyState, SectionHeader } from '@/components/ui/primitives'
 import { CollectionEditor } from './editor'
+import { feedAlternate } from '@/lib/feed'
+import { FeedLink } from '@/components/feed-link'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +21,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: collection.title,
     description: collection.subtitle || collection.description,
-    alternates: { canonical: `/collections/${collection.slug}` },
+    alternates: {
+      canonical: `/collections/${collection.slug}`,
+      types: collection.is_public ? feedAlternate(`/collections/${collection.slug}/feed.xml`) : undefined,
+    },
     openGraph: {
       title: `${collection.title} · web-amble`,
       description: collection.subtitle || collection.description,
@@ -67,9 +72,12 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
           {collection.description && (
             <p className="mt-5 max-w-prose text-base leading-relaxed text-muted">{collection.description}</p>
           )}
-          <p className="mt-6 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
-            {pluralize(sites.length, 'site')} · updated {formatDate(collection.updated_at)}
-          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <p className="font-mono text-2xs uppercase tracking-[0.12em] text-faint">
+              {pluralize(sites.length, 'site')} · updated {formatDate(collection.updated_at)}
+            </p>
+            {collection.is_public && <FeedLink href={`/collections/${collection.slug}/feed.xml`} />}
+          </div>
         </div>
       </header>
 

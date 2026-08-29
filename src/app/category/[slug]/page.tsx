@@ -3,11 +3,13 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getCategory, listCategories, listSites, tagsForCategory } from '@/lib/queries/sites'
+import { feedAlternate } from '@/lib/feed'
 import { CATEGORY_SEEDS } from '@/lib/taxonomy'
 import { SiteGrid } from '@/components/site/site-card'
 import type { BrowseQuery } from '@/components/filter-bar'
 import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
 import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
+import { FeedLink } from '@/components/feed-link'
 import { EmptyState, ButtonLink } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +27,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: category.name,
     description: category.description,
-    alternates: { canonical: `/category/${category.slug}` },
+    alternates: {
+      canonical: `/category/${category.slug}`,
+      types: feedAlternate(`/category/${category.slug}/feed.xml`),
+    },
   }
 }
 
@@ -75,6 +80,9 @@ export default async function CategoryPage({
           <h1 className="max-w-3xl font-display text-display-sm">{category.name}</h1>
           <p className="mt-2 font-display text-xl text-muted">{category.tagline}</p>
           <p className="mt-5 max-w-prose text-base leading-relaxed text-muted">{category.description}</p>
+          <div className="mt-6">
+            <FeedLink href={`/category/${category.slug}/feed.xml`} label="Subscribe to this shelf" />
+          </div>
         </div>
       </header>
 

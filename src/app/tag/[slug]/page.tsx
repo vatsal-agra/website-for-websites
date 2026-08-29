@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getTag, listCategories, listSites, listTags } from '@/lib/queries/sites'
+import { feedAlternate } from '@/lib/feed'
 import { SiteGrid } from '@/components/site/site-card'
 import type { BrowseQuery } from '@/components/filter-bar'
 import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
 import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
+import { FeedLink } from '@/components/feed-link'
 import { ChipLink, EmptyState } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `#${tag.name}`,
     description: `Websites tagged “${tag.name}” in the web-amble catalogue.`,
-    alternates: { canonical: `/tag/${tag.slug}` },
+    alternates: { canonical: `/tag/${tag.slug}`, types: feedAlternate(`/tag/${tag.slug}/feed.xml`) },
   }
 }
 
@@ -66,6 +68,9 @@ export default async function TagPage({
           Tags are assigned automatically from a fixed vocabulary, so they stay consistent across the catalogue —
           every site carrying this one is below.
         </p>
+        <div className="mt-6">
+          <FeedLink href={`/tag/${tag.slug}/feed.xml`} label={`Subscribe to #${tag.name}`} />
+        </div>
       </header>
 
       <div className="mb-8">

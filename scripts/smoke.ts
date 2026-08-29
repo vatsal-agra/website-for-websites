@@ -150,11 +150,18 @@ if (site) {
   routes.push([`/site/${site.slug}/opengraph-image`])
   routes.push([`/go/${site.slug}`, [302, 307]])
 }
-if (category) routes.push([`/category/${category.slug}`])
-if (tag) routes.push([`/tag/${tag.slug}`])
+if (category) {
+  routes.push([`/category/${category.slug}`])
+  routes.push([`/category/${category.slug}/feed.xml`])
+}
+if (tag) {
+  routes.push([`/tag/${tag.slug}`])
+  routes.push([`/tag/${tag.slug}/feed.xml`])
+}
 if (collection) {
   routes.push([`/collections/${collection.slug}`])
   routes.push([`/collections/${collection.slug}/opengraph-image`])
+  routes.push([`/collections/${collection.slug}/feed.xml`])
 }
 if (user) routes.push([`/u/${user.username}`])
 
