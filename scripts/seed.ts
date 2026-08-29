@@ -7,10 +7,11 @@ import { DEFAULT_SOURCES } from '../src/lib/sources'
 import { SEED_COLLECTIONS, SEED_SITES } from '../src/lib/seed'
 import { createUser, findUserByUsername } from '../src/lib/auth'
 import { normalizeUrl } from '../src/lib/url'
+import { slugify } from '../src/lib/utils'
 import { fallbackAccent } from '../src/lib/thumbs'
 import { enqueue } from '../src/lib/jobs'
 import { all } from '../src/lib/db'
-import { recomputeTrending, reindexSite, setSiteTags, uniqueSlug } from '../src/lib/queries/sites'
+import { recomputeTrending, reindexAll } from '../src/lib/queries/sites'
 import { addToCollection, createCollection } from '../src/lib/queries/collections'
 import type { SiteAttributes } from '../src/lib/types'
 
@@ -75,6 +76,43 @@ const categoryIds = new Map(
   (await all<{ id: number; slug: string }>('SELECT id, slug FROM categories')).map((c) => [c.slug, Number(c.id)]),
 )
 
+// Pre-create every tag the founding catalogue uses, and resolve every existing
+// site, in two queries rather than a dozen per entry. Against a network
+// database that is the difference between a twenty-minute first run and a
+// two-minute one.
+const seedTagNames = [
+  ...new Set(SEED_SITES.flatMap((s) => s.tags.map((t) => t.trim().toLowerCase())).filter(Boolean)),
+]
+for (const name of seedTagNames) {
+  await run('INSERT INTO tags (slug, name) VALUES (?, ?) ON CONFLICT (slug) DO NOTHING', [
+    slugify(name, 32),
+    name.slice(0, 32),
+  ])
+}
+const tagIds = new Map(
+  (await all<{ id: number; slug: string }>('SELECT id, slug FROM tags')).map((t) => [t.slug, Number(t.id)]),
+)
+
+const existingByKey = new Map(
+  (await all<{ id: number; domain_key: string }>(`SELECT id, domain_key FROM sites`)).map((r) => [
+    r.domain_key,
+    Number(r.id),
+  ]),
+)
+const usedSlugs = new Set(
+  (await all<{ slug: string }>('SELECT slug FROM sites')).map((r) => r.slug),
+)
+
+/** Slugs are resolved in memory; the database still holds the UNIQUE constraint. */
+function claimSlug(title: string): string {
+  const root = slugify(title) || 'site'
+  let candidate = root
+  let n = 1
+  while (usedSlugs.has(candidate)) candidate = `${root}-${++n}`
+  usedSlugs.add(candidate)
+  return candidate
+}
+
 const siteIdByUrl = new Map<string, number>()
 let added = 0
 let skipped = 0
@@ -90,9 +128,9 @@ for (const seed of SEED_SITES) {
     log(`${colours.red}✗${colours.reset} bad seed url: ${seed.url}`)
     continue
   }
-  const known = await get<{ id: number }>('SELECT id FROM sites WHERE domain_key = ?', [normalized.key])
+  const known = existingByKey.get(normalized.key)
   if (known) {
-    siteIdByUrl.set(seed.url, Number(known.id))
+    siteIdByUrl.set(seed.url, known)
     skipped++
     continue
   }
@@ -110,7 +148,7 @@ for (const seed of SEED_SITES) {
      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'seed', NULL, ?, ?, ?, ?, ?, ?)
      RETURNING id`,
     [
-      await uniqueSlug(seed.title),
+      claimSlug(seed.title),
       normalized.href,
       normalized.domain,
       normalized.key,
@@ -131,7 +169,17 @@ for (const seed of SEED_SITES) {
   )
 
   const siteId = Number(row!.id)
-  await setSiteTags(siteId, seed.tags)
+
+  // one statement for all of this entry's tags
+  const ids = [...new Set(seed.tags.map((t) => tagIds.get(slugify(t, 32))).filter(Boolean))] as number[]
+  if (ids.length) {
+    await run(
+      `INSERT INTO site_tags (site_id, tag_id) VALUES ${ids.map(() => '(?, ?)').join(', ')}
+       ON CONFLICT DO NOTHING`,
+      ids.flatMap((tagId) => [siteId, tagId]),
+    )
+  }
+
   siteIdByUrl.set(seed.url, siteId)
   added++
 }
@@ -142,6 +190,11 @@ log(`${colours.green}✓${colours.reset} ${added} sites catalogued${skipped ? `,
 // site is a real one. Ranking on a fresh install therefore falls back to
 // editorial quality and recency, which is what the trending formula already
 // does when engagement is flat.
+await run(
+  `UPDATE tags SET uses = (SELECT COUNT(*)::int FROM site_tags st WHERE st.tag_id = tags.id)`,
+)
+const reindexed = await reindexAll()
+log(`${colours.green}✓${colours.reset} rebuilt ${reindexed} search vectors`)
 await recomputeTrending()
 
 // ------------------------------------------------------------ collections --
