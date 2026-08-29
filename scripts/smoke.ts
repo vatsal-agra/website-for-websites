@@ -20,11 +20,26 @@ const timeoutMs = 120_000
 interface Result {
   path: string
   status: number
+  /** time to the first byte — the response headers */
   ms: number
+  /** time to the last byte, which on a streamed page is when it is actually done */
+  totalMs: number
+  bytes: number
   ok: boolean
   note?: string
 }
 
+/**
+ * Every page on this site streams, so a status code proves almost nothing: the
+ * shell is emitted before a single query has resolved, and a Suspense boundary
+ * that throws afterwards still arrives inside a 200. The body has to be read to
+ * the end, and then checked.
+ *
+ * Draining it also matters for the server. Letting the body get collected
+ * unread cancels the stream mid-render, and on Node 22.14 that trips a
+ * web-streams bug (`controller[kState].transformAlgorithm is not a function`)
+ * which wedges the dev server for every request after it.
+ */
 async function hit(path: string, expect: number[] = [200]): Promise<Result> {
   const started = Date.now()
   try {
@@ -33,21 +48,59 @@ async function hit(path: string, expect: number[] = [200]): Promise<Result> {
       signal: AbortSignal.timeout(timeoutMs),
       headers: { 'user-agent': 'web-amble-smoke/1.0' },
     })
-    return {
+    const ms = Date.now() - started
+    const body = await res.text()
+    const result: Result = {
       path,
       status: res.status,
-      ms: Date.now() - started,
+      ms,
+      totalMs: Date.now() - started,
+      bytes: body.length,
       ok: expect.includes(res.status),
     }
+
+    // only a 200 is claiming to be a page; a redirect's body is Next's own stub
+    if (result.ok && res.status === 200 && res.headers.get('content-type')?.includes('text/html')) {
+      const problem = inspectHtml(body)
+      if (problem) {
+        result.ok = false
+        result.note = problem
+      }
+    }
+    return result
   } catch (err) {
     return {
       path,
       status: 0,
       ms: Date.now() - started,
+      totalMs: Date.now() - started,
+      bytes: 0,
       ok: false,
       note: err instanceof Error ? err.message.slice(0, 60) : 'failed',
     }
   }
+}
+
+/**
+ * What a 200 can still be hiding.
+ *
+ * Every Suspense fallback is emitted with `aria-busy="true"`, and React closes
+ * each boundary with a `$RC(` call once its content is ready. If the document
+ * ends with more of the first than the second, a section failed or never
+ * resolved — the page looks fine to a status check and is broken to a reader.
+ */
+function inspectHtml(body: string): string | undefined {
+  const count = (needle: string) => body.split(needle).length - 1
+
+  const fallbacks = count('aria-busy="true"')
+  const resolved = count('$RC(')
+  if (fallbacks > resolved) {
+    return `${fallbacks - resolved} of ${fallbacks} suspense boundaries never resolved`
+  }
+
+  if (body.includes('__next_error__')) return 'rendered the error page'
+  if (!body.includes('</html>')) return 'document was truncated'
+  return undefined
 }
 
 banner(`web-amble — smoke test against ${base}`)
@@ -70,6 +123,7 @@ const routes: [string, number[]?][] = [
   ['/browse?sort=random'],
   ['/browse?sort=alpha'],
   ['/categories'],
+  ['/tags'],
   ['/collections'],
   ['/search?q=maps'],
   ['/search?q=zzzznothingmatchesthis'],
@@ -110,31 +164,40 @@ for (const [path, expect] of routes) {
   const result = await hit(path, expect)
   results.push(result)
   const mark = result.ok ? `${colours.green}pass${colours.reset}` : `${colours.red}FAIL${colours.reset}`
-  const timing = result.ms > 5000 ? `${colours.yellow}${result.ms}ms${colours.reset}` : `${colours.dim}${result.ms}ms${colours.reset}`
+  const label = `${result.ms}ms → ${result.totalMs}ms`
+  const timing =
+    result.totalMs > 5000 ? `${colours.yellow}${label}${colours.reset}` : `${colours.dim}${label}${colours.reset}`
   console.log(
-    `  ${mark}  ${String(result.status).padEnd(3)}  ${path.padEnd(46).slice(0, 46)}  ${timing}${
+    `  ${mark}  ${String(result.status).padEnd(3)}  ${path.padEnd(42).slice(0, 42)}  ${timing}${
       result.note ? ` ${colours.dim}${result.note}${colours.reset}` : ''
     }`,
   )
 }
 
 const failed = results.filter((r) => !r.ok)
-const slow = results.filter((r) => r.ok && r.ms > 5000)
+const slow = results.filter((r) => r.ok && r.totalMs > 5000)
 
 console.log()
-log(`${results.length} routes · ${results.length - failed.length} passed · ${failed.length} failed`)
+const bytes = results.reduce((n, r) => n + r.bytes, 0)
+log(
+  `${results.length} routes · ${results.length - failed.length} passed · ${failed.length} failed · ` +
+    `${(bytes / 1024).toFixed(0)}KB read`,
+)
 if (slow.length) {
-  log(`${colours.yellow}${slow.length} slower than 5s${colours.reset}: ${slow.map((s) => s.path).join(', ')}`)
+  log(
+    `${colours.yellow}${slow.length} took longer than 5s to finish${colours.reset}: ` +
+      slow.map((s) => `${s.path} (${s.totalMs}ms)`).join(', '),
+  )
 }
 
 if (failed.length) {
   console.log()
-  for (const f of failed) log(`${colours.red}✗${colours.reset} ${f.path} → ${f.status || f.note}`)
+  for (const f of failed) log(`${colours.red}✗${colours.reset} ${f.path} → ${f.note || f.status}`)
   console.log()
   process.exit(1)
 }
 
 console.log()
-log(`${colours.green}everything responded${colours.reset}`)
+log(`${colours.green}every route rendered to completion${colours.reset}`)
 console.log()
 process.exit(0)

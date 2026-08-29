@@ -85,6 +85,32 @@ all, which looks exactly like a database outage and is not one.
 
 ---
 
+## The dev server answers /robots.txt instantly and nothing else at all
+
+Every database-backed page hangs until its timeout; the log shows
+`application-code: 120s` with `next.js: 5ms`. It looks exactly like a database
+outage. Before believing that, query the database directly — `npx tsx` a two
+line script through `src/lib/db` and time it. If that comes back in 300ms, the
+database is fine and the *server* is wedged.
+
+Look further up the log for:
+
+```
+⨯ TypeError: controller[kState].transformAlgorithm is not a function
+```
+
+That is a Node 22.14 web-streams bug, and it fires when a streaming response is
+cancelled mid-render — for instance by a client that reads the headers and then
+drops the body. Once it fires, every streamed response after it hangs. Restart
+the server.
+
+The thing that used to trigger it here was `npm run smoke` itself: `fetch()`
+resolves on headers, and the script never read the bodies. It now drains every
+response, which both avoids the bug and is the only way to check a streamed page
+at all — see below.
+
+---
+
 ## Suspense fallbacks never disappear
 
 Skeletons stay on screen next to the real content, and headings appear twice.
@@ -147,3 +173,10 @@ runtime rather than at build time:
 
 `npm run smoke` exercises every route type against real records and would have
 caught most of these. Run it after any query change.
+
+It reads each response to the last byte and then checks the HTML, because on a
+streamed page the status code is emitted before any query has run. A boundary
+that throws afterwards still arrives inside a 200. The check counts
+`aria-busy="true"` fallbacks against React's `$RC(` completion calls and fails
+the route if any boundary never resolved, so the report distinguishes "the
+server answered" from "the page is actually there".
