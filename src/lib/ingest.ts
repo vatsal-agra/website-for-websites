@@ -75,11 +75,34 @@ export async function enqueueCandidates(
   return added
 }
 
-/** Take the best queued candidates and turn them into ingest jobs. */
-export async function drainCandidates(limit = 20): Promise<number> {
+/**
+ * Take the best queued candidates and turn them into ingest jobs.
+ *
+ * Strictly by weight, this walks the link graph breadth-first out of whichever
+ * neighbourhood happens to score highest. One popular framework's homepage
+ * contributes sixty outbound links at its own quality score; they sort to the
+ * top together, each ingest contributes sixty more from the same corner of the
+ * web, and the catalogue quietly fills up with twelve variations on the same
+ * thing. That is how a directory meant to show you what you have never seen
+ * ends up showing you a documentation cluster.
+ *
+ * So each drain takes at most two candidates per discovering domain. The
+ * remainder stay queued and come back in the next round, by which time another
+ * neighbourhood has had a turn.
+ */
+export async function drainCandidates(limit = 20, perSource = 2): Promise<number> {
   const rows = await all<{ id: number; url: string; source: string; source_ref: string | null }>(
-    `SELECT * FROM candidates WHERE status = 'queued' ORDER BY weight DESC, id ASC LIMIT ?`,
-    [limit],
+    `SELECT id, url, source, source_ref FROM (
+       SELECT c.*, ROW_NUMBER() OVER (
+                     PARTITION BY COALESCE(c.found_from, c.source)
+                     ORDER BY c.weight DESC, c.id ASC
+                   ) AS rank_in_source
+       FROM candidates c WHERE c.status = 'queued'
+     ) ranked
+     WHERE rank_in_source <= ?
+     ORDER BY weight DESC, id ASC
+     LIMIT ?`,
+    [perSource, limit],
   )
   let queued = 0
   for (const row of rows) {
