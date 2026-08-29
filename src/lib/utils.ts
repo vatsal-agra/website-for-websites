@@ -163,3 +163,26 @@ export function escapeXml(input: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
 }
+
+/**
+ * The language of a listing, when it is worth saying.
+ *
+ * The catalogue is mostly English and a badge on every card would be noise, but
+ * a reader scanning a grid should know that “Pédagothèque de l'ENPC” is in
+ * French before they click it. So: a label for everything else, nothing for
+ * English, and nothing when the page did not say.
+ */
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
+
+export function foreignLanguage(lang: string | null | undefined): { code: string; name: string } | null {
+  const code = (lang ?? '').trim().toLowerCase().split('-')[0]
+  if (!code || code.length < 2 || code === 'en') return null
+  try {
+    const name = LANGUAGE_NAMES.of(code)
+    // Intl echoes the input back when it does not recognise a code
+    if (!name || name.toLowerCase() === code) return null
+    return { code: code.toUpperCase(), name }
+  } catch {
+    return null
+  }
+}

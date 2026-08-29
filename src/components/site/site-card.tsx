@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowUpRight, ArrowUp } from 'lucide-react'
 import type { Site } from '@/lib/types'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, foreignLanguage, formatNumber } from '@/lib/utils'
 import { displayUrl } from '@/lib/url'
 import { SiteCover } from './cover'
 import { SiteMark } from './favicon'
@@ -30,6 +30,8 @@ export function SiteCard({
 }: SiteCardProps) {
   if (variant === 'row') return <SiteRow site={site} signedIn={signedIn} className={className} index={index} />
   if (variant === 'compact') return <SiteCompact site={site} className={className} />
+
+  const language = foreignLanguage(site.lang)
 
   return (
     <article
@@ -74,8 +76,16 @@ export function SiteCard({
                 {site.title}
               </Link>
             </h3>
-            <p className="mt-0.5 truncate font-mono text-2xs lowercase tracking-normal text-faint">
-              {displayUrl(site.url, 34)}
+            <p className="mt-0.5 flex items-center gap-1.5 font-mono text-2xs lowercase tracking-normal text-faint">
+              <span className="truncate">{displayUrl(site.url, 34)}</span>
+              {language && (
+                <span
+                  className="shrink-0 rounded border border-line px-1 uppercase tracking-[0.08em]"
+                  title={`This site is in ${language.name}`}
+                >
+                  {language.code}
+                </span>
+              )}
             </p>
           </div>
         </div>

@@ -1,18 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import {
-  chunk,
-  escapeXml,
-  formatNumber,
-  hashString,
-  hslToHex,
-  pluralize,
-  seededShuffle,
-  slugify,
-  timeAgo,
-  truncate,
-  uniqueBy,
-} from '../src/lib/utils'
+import { chunk, escapeXml, foreignLanguage, formatNumber, hashString, hslToHex, pluralize, seededShuffle, slugify, timeAgo, truncate, uniqueBy } from '../src/lib/utils'
 
 describe('slugify', () => {
   it('makes url-safe slugs', () => {
@@ -131,5 +119,24 @@ describe('uniqueBy / chunk', () => {
 describe('escapeXml', () => {
   it('escapes everything that would break a feed', () => {
     assert.equal(escapeXml('a & b <c> "d" \'e\''), 'a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos;')
+  })
+})
+
+describe('foreignLanguage', () => {
+  it('says nothing about English, or about a page that did not say', () => {
+    for (const lang of ['en', 'EN', 'en-gb', 'en-US', '', null, undefined, 'x']) {
+      assert.equal(foreignLanguage(lang), null, String(lang))
+    }
+  })
+
+  it('names the language for everything else', () => {
+    assert.deepEqual(foreignLanguage('fr'), { code: 'FR', name: 'French' })
+    assert.deepEqual(foreignLanguage('uk'), { code: 'UK', name: 'Ukrainian' })
+    assert.deepEqual(foreignLanguage('pt-BR'), { code: 'PT', name: 'Portuguese' })
+  })
+
+  it('stays quiet rather than echoing a code it does not know', () => {
+    assert.equal(foreignLanguage('zz'), null)
+    assert.equal(foreignLanguage('qqq'), null)
   })
 })
