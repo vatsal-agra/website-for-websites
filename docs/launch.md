@@ -60,10 +60,14 @@ How entries get in:
 - A weighted keyword classifier files it into one of 16 categories and up to
   six tags from a fixed vocabulary. The fixed vocabulary is the important part;
   it's what stops the tag list turning into meta-keyword soup.
-- A quality score comes from page evidence: does it have a real description,
-  does it work on a phone, is it drowning in ad networks, is it a parked
-  domain. Above a threshold a discovered site goes live automatically;
-  everything else, and every human submission, waits for review.
+- A quality score comes from evidence on the page: is there anything here to
+  read or use, does it link out to the rest of the web, is it drowning in ad
+  networks, is it a parked domain — and does it read like a sales funnel, which
+  counts against it. Polished social metadata counts for almost nothing, on
+  purpose: a company with a marketing team has perfect metadata and that tells
+  you nothing about whether the site is worth your time. Above a threshold a
+  discovered site goes live automatically; everything else, and every human
+  submission, waits for review.
 
 Ranking is public and boring on purpose:
 
@@ -75,9 +79,13 @@ counters start at zero and only move when somebody does something.
 Stack: Next.js, Postgres, sharp. No API keys, no analytics, no tracking
 cookies. Outbound links pass through a counter that strips the referrer.
 
-What it isn't yet: the catalogue is small, the classifier misfiles things
-(there's a report button on every entry), and there's no way to follow a
-category yet. Happy to hear what would make it more useful.
+Every category, tag and collection publishes its own RSS feed, so you can
+follow one corner of it rather than all of it.
+
+What it isn't yet: the catalogue is small, and the classifier misfiles things —
+there's a report button on every entry, and the score genuinely cannot tell an
+excellent company website from an excellent independent one, which is what the
+review queue is for. Happy to hear what would make it more useful.
 ```
 
 **Answering the obvious comments**
@@ -123,6 +131,12 @@ Favourite thing in it so far: a website powered by a solar panel that goes
 offline when the weather is bad. I would never have searched for that.
 ```
 
+```
+Every shelf has its own RSS feed. Follow "maps" or "archives" or one curated
+collection and get told when something new lands there, instead of following
+the whole thing.
+```
+
 ---
 
 ## Reddit
@@ -145,7 +159,10 @@ each subreddit's self-promotion rules.
 web-amble is a directory, so getting listed in other directories is both
 on-brand and the cheapest distribution there is:
 
-- There's an HTML feed at `/feed.xml` for anyone who wants to syndicate.
+- There's RSS at `/feed.xml` for the whole catalogue, and at
+  `/category/<slug>/feed.xml`, `/tag/<slug>/feed.xml` and
+  `/collections/<slug>/feed.xml` for one shelf — worth mentioning to anyone who
+  syndicates links, since a narrow feed is far more usable than a firehose.
 - Submit to the small-web indexes: Marginalia, indieweb aggregators, and the
   link blogs already used as discovery sources — several accept submissions.
 - Every listed site is a potential referrer. "You're listed in web-amble" is a
@@ -173,3 +190,6 @@ than the og:image ones because the palette stays coherent.
 - Don't promise a mobile app, an API or an email digest that doesn't exist.
 - Don't quote a catalogue size that isn't currently true.
 - Don't claim the classifier is accurate. It's a heuristic with a report button.
+- Don't claim the quality score identifies good websites. It filters out parked
+  domains, ad farms and sales funnels, and it is deliberately conservative about
+  what it lets through unreviewed. That is a smaller and more defensible claim.
