@@ -77,11 +77,26 @@ export function toPositional(query: string): string {
  * instead of a raw `relation "sites" does not exist`.
  */
 function explain(err: unknown): never {
-  if (err && typeof err === 'object' && (err as any).code === '42P01') {
+  const code = (err as any)?.code
+  const message = String((err as any)?.message ?? '')
+
+  if (code === '42P01') {
     throw new Error(
       'The database has no schema yet. Run `npm run db:migrate` (or `npm run setup` to migrate and seed).',
     )
   }
+
+  // Supabase pauses free-tier projects when they go idle. The pooler then
+  // reports a missing tenant, which reads like a credentials problem and is
+  // not — it cost hours to diagnose once already.
+  if (/tenant\/user .* not found/i.test(message) || code === 'ENOTFOUND') {
+    throw new Error(
+      'Cannot reach the database. If this is a free-tier Supabase project it has probably ' +
+        'auto-paused after being idle — resume it from the dashboard. Otherwise check DATABASE_URL. ' +
+        `(driver said: ${message.slice(0, 120)})`,
+    )
+  }
+
   throw err
 }
 

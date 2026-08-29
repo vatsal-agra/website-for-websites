@@ -13,6 +13,12 @@
  *  · Full-text search is a `tsvector` column on `sites`, maintained by
  *    `reindexSite()`, rather than a trigger — reindexing already happens
  *    explicitly whenever a site's text or tags change.
+ *
+ * On Supabase specifically: these tables are deliberately NOT granted to the
+ * `anon` / `authenticated` roles, so they are unreachable through the auto-
+ * generated REST API. The app talks to Postgres directly and does its own auth,
+ * so no row-level-security policies are needed — but do not "helpfully" add
+ * grants for those roles, because that is what would expose `users` publicly.
  */
 
 const TS_NOW = `to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')`

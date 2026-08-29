@@ -121,6 +121,16 @@ five minutes.
 
 Nothing else is required — no Docker, no separate worker dyno, no object storage account.
 
+### Keeping it awake
+
+Free-tier Supabase projects **pause themselves when idle**, and a paused database takes the
+whole site down with a confusing "tenant/user not found" from the pooler. The scheduled worker
+hits the database every five minutes, which is enough to keep a deployed site active — but a
+project you only touch during local development will pause overnight. Resume it from the
+Supabase dashboard, or upgrade the plan if the site needs to be reliably up.
+
+web-amble detects this case and says so plainly rather than surfacing the driver's error.
+
 ### Verifying a deploy
 
 ```bash

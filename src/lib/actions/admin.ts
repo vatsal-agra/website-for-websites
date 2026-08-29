@@ -12,6 +12,7 @@ import { createSource, deleteSource, setSourceEnabled } from '@/lib/sources'
 import { drainCandidates } from '@/lib/ingest'
 import {
   deleteSite,
+  invalidateCategoryCache,
   markFeatured,
   setSiteTags,
   setStatus,
@@ -27,6 +28,8 @@ export interface AdminState {
 }
 
 function refreshAll() {
+  // category counts are memoised for 30s; approving a site should show up now
+  invalidateCategoryCache()
   revalidatePath('/admin')
   revalidatePath('/admin/queue')
   revalidatePath('/admin/sites')

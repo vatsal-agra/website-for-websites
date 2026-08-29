@@ -26,39 +26,62 @@ export function mapSite(row: any, extras: { category?: Category | null; tags?: T
 }
 
 /**
- * The sixteen categories are effectively static — they only change when an
- * editor edits the taxonomy — but `hydrate()` is called once per shelf, so a
- * home page was fetching them eight times over the network. Cached briefly.
+ * Short-lived, single-flight memo.
+ *
+ * The taxonomy is effectively static, but a storefront page asks for it from
+ * half a dozen independent sections. Without this, each one misses the cold
+ * cache and issues its own identical query — and over a network database that
+ * is the single largest source of wasted round trips on the page.
+ *
+ * Single-flight matters as much as the TTL: concurrent callers share one
+ * in-flight promise instead of racing to populate the same entry.
  */
-let categoryCache: { at: number; byId: Map<number, Category> } | null = null
-let categoryInFlight: Promise<Map<number, Category>> | null = null
-const CATEGORY_TTL_MS = 60_000
+function memo<T>(ttlMs: number, load: () => Promise<T>) {
+  let cached: { at: number; value: T } | null = null
+  let inFlight: Promise<T> | null = null
 
-/**
- * Single-flight: a home page hydrates five shelves at once, and without this
- * every one of them misses the cold cache and issues its own identical query.
- * Callers that arrive while a fetch is in progress share that one promise.
- */
+  const read = async (): Promise<T> => {
+    if (cached && Date.now() - cached.at < ttlMs) return cached.value
+    if (inFlight) return inFlight
+    inFlight = (async () => {
+      try {
+        const value = await load()
+        cached = { at: Date.now(), value }
+        return value
+      } finally {
+        inFlight = null
+      }
+    })()
+    return inFlight
+  }
+
+  read.invalidate = () => {
+    cached = null
+  }
+  return read
+}
+
+const CATEGORY_TTL_MS = 30_000
+
+const categoriesByIdMemo = memo(CATEGORY_TTL_MS, async () => {
+  const rows = await all<Category>('SELECT * FROM categories')
+  return new Map(rows.map((c) => [Number(c.id), c]))
+})
+
+const categoriesWithCountsMemo = memo(CATEGORY_TTL_MS, async () =>
+  all<Category>(
+    `SELECT c.*, (SELECT COUNT(*)::int FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
+     FROM categories c ORDER BY c.position, c.name`,
+  ),
+)
+
 async function categoriesById(): Promise<Map<number, Category>> {
-  if (categoryCache && Date.now() - categoryCache.at < CATEGORY_TTL_MS) return categoryCache.byId
-  if (categoryInFlight) return categoryInFlight
-
-  categoryInFlight = (async () => {
-    try {
-      const rows = await all<Category>('SELECT * FROM categories')
-      const byId = new Map(rows.map((c) => [Number(c.id), c]))
-      categoryCache = { at: Date.now(), byId }
-      return byId
-    } finally {
-      categoryInFlight = null
-    }
-  })()
-
-  return categoryInFlight
+  return categoriesByIdMemo()
 }
 
 export function invalidateCategoryCache() {
-  categoryCache = null
+  categoriesByIdMemo.invalidate()
+  categoriesWithCountsMemo.invalidate()
 }
 
 /** Attach categories + tags to a batch of rows. */
@@ -389,10 +412,7 @@ export async function hiddenGems(limit = 12, userId?: number | null): Promise<Si
 
 export async function listCategories(withCounts = true): Promise<Category[]> {
   if (!withCounts) return all<Category>('SELECT * FROM categories ORDER BY position, name')
-  return all<Category>(
-    `SELECT c.*, (SELECT COUNT(*)::int FROM sites s WHERE s.category_id = c.id AND s.status = 'approved') AS count
-     FROM categories c ORDER BY c.position, c.name`,
-  )
+  return categoriesWithCountsMemo()
 }
 
 export async function getCategory(slug: string): Promise<Category | null> {
