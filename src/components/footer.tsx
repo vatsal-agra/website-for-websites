@@ -14,6 +14,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: '/browse?sort=new', label: 'Newest arrivals' },
       { href: '/browse?sort=top', label: 'Most upvoted' },
       { href: '/categories', label: 'All categories' },
+      { href: '/tags', label: 'All tags' },
       { href: '/collections', label: 'Collections' },
       { href: '/shuffle', label: 'Shuffle' },
     ],

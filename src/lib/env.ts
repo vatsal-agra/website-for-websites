@@ -55,6 +55,16 @@ export const env = {
   crawlerRespectRobots: bool('CRAWLER_RESPECT_ROBOTS', true),
 
   workerTickMs: num('WORKER_TICK_MS', 4000),
+  /**
+   * Jobs the long-running worker takes per tick.
+   *
+   * This is the throttle that keeps the catalogue's background work from
+   * starving the pages. Every job is several statements, so a batch of six
+   * against a small shared database is enough to make a page render time out
+   * while cover art is being generated. Three is comfortable; raise it only if
+   * the database has headroom to spare.
+   */
+  workerBatch: num('WORKER_BATCH', 3),
   workerEnabled: bool('WORKER_ENABLED', true),
   autoApproveQuality: num('AUTO_APPROVE_QUALITY', 0.72),
 

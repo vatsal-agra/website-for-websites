@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { listCategories, listTags } from '@/lib/queries/sites'
 import { CategoryTile } from '@/components/cards'
 import { ChipLink } from '@/components/ui/primitives'
@@ -34,7 +35,12 @@ export default async function CategoriesPage() {
 
       {tags.length > 0 && (
         <section className="mt-16">
-          <h2 className="eyebrow mb-4">Browse by tag</h2>
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <h2 className="eyebrow">Browse by tag</h2>
+            <Link href="/tags" className="text-sm text-muted no-underline transition-colors hover:text-ink">
+              Every tag →
+            </Link>
+          </div>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
               <ChipLink key={tag.id} href={`/tag/${tag.slug}`}>

@@ -1,6 +1,7 @@
 import { all, get, run, nowIso, today, dayOffset } from '../db'
 import type { BrowseFilters, Category, Site, SiteAttributes, SiteRow, SortKey, Tag } from '../types'
 import { slugify } from '../utils'
+import { memo } from '../memo'
 
 // ------------------------------------------------------------------ mapping --
 
@@ -23,42 +24,6 @@ export function mapSite(row: any, extras: { category?: Category | null; tags?: T
     viewerVoted: Boolean((row as any).viewer_voted),
     viewerSaved: Boolean((row as any).viewer_saved),
   }
-}
-
-/**
- * Short-lived, single-flight memo.
- *
- * The taxonomy is effectively static, but a storefront page asks for it from
- * half a dozen independent sections. Without this, each one misses the cold
- * cache and issues its own identical query — and over a network database that
- * is the single largest source of wasted round trips on the page.
- *
- * Single-flight matters as much as the TTL: concurrent callers share one
- * in-flight promise instead of racing to populate the same entry.
- */
-function memo<T>(ttlMs: number, load: () => Promise<T>) {
-  let cached: { at: number; value: T } | null = null
-  let inFlight: Promise<T> | null = null
-
-  const read = async (): Promise<T> => {
-    if (cached && Date.now() - cached.at < ttlMs) return cached.value
-    if (inFlight) return inFlight
-    inFlight = (async () => {
-      try {
-        const value = await load()
-        cached = { at: Date.now(), value }
-        return value
-      } finally {
-        inFlight = null
-      }
-    })()
-    return inFlight
-  }
-
-  read.invalidate = () => {
-    cached = null
-  }
-  return read
 }
 
 const CATEGORY_TTL_MS = 30_000

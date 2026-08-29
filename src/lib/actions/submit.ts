@@ -5,7 +5,8 @@ import { clientKey, getCurrentUser } from '@/lib/session'
 import { LIMITS, rateLimit } from '@/lib/ratelimit'
 import { ingestUrl } from '@/lib/ingest'
 import { normalizeUrl } from '@/lib/url'
-import { getSiteByDomainKey } from '@/lib/queries/sites'
+import { getSiteByDomainKey, invalidateCategoryCache } from '@/lib/queries/sites'
+import { invalidateStats } from '@/lib/queries/stats'
 
 export interface SubmitState {
   status: 'idle' | 'ok' | 'duplicate' | 'error'
@@ -76,6 +77,11 @@ export async function submitSiteAction(_prev: SubmitState, formData: FormData): 
   }
 
   audit('site.submitted', outcome.slug, note || '(no note)', user ? `@${user.username}` : `ip:${ip}`)
+
+  // the catalogue just grew: drop the memoised counters so the footer, the
+  // shelf counts and the moderator's pending badge all reflect it immediately
+  invalidateStats()
+  invalidateCategoryCache()
 
   return {
     status: 'ok',

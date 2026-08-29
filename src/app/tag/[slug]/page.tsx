@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getTag, listCategories, listSites, listTags } from '@/lib/queries/sites'
@@ -86,7 +87,12 @@ export default async function TagPage({
 
       {otherTags.length > 0 && (
         <section className="mt-16 border-t border-line pt-8">
-          <h2 className="eyebrow mb-4">Other tags</h2>
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <h2 className="eyebrow">Other tags</h2>
+            <Link href="/tags" className="text-sm text-muted no-underline transition-colors hover:text-ink">
+              Every tag →
+            </Link>
+          </div>
           <div className="flex flex-wrap gap-2">
             {otherTags.slice(0, 30).map((other) => (
               <ChipLink key={other.id} href={`/tag/${other.slug}`}>

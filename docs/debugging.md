@@ -56,6 +56,35 @@ overnight.
 
 ---
 
+## Every page takes a minute, and the log says "statement timeout"
+
+```
+Error [PostgresError]: canceling statement due to statement timeout
+ GET /browse 200 in 90s (next.js: 204ms, application-code: 90s)
+```
+
+`next.js: 204ms` against `application-code: 90s` is the tell: the framework is
+fine, the database is not. Something else is using it. Nine times out of ten
+that something is the worker — `npm run worker` takes a batch of jobs every few
+seconds, each job is several statements, and a free-tier database has about one
+core to share between that and the page you are loading.
+
+Stop the worker and load the page again. If it comes back, that was it — lower
+`WORKER_BATCH` (2 is comfortable locally) or leave the worker off while you
+work on pages. On Netlify this is far gentler: the scheduled function ticks
+every five minutes rather than continuously.
+
+`application_name` will not help you here. Through Supabase's transaction
+pooler every connection reports as `Supavisor`, so `pg_stat_activity` cannot
+tell a page render apart from a job. Stopping one side and re-measuring can.
+
+Then **restart the dev server** before believing any number. A server that has
+absorbed a few timed-out requests keeps rendering them: it sits at two or three
+gigabytes, answers `/robots.txt` instantly and every database-backed page not at
+all, which looks exactly like a database outage and is not one.
+
+---
+
 ## Suspense fallbacks never disappear
 
 Skeletons stay on screen next to the real content, and headings appear twice.

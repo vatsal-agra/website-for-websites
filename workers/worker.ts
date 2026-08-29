@@ -27,7 +27,7 @@ async function tick() {
     )
   }
 
-  const { ran, results } = await drain(6)
+  const { ran, results } = await drain(env.workerBatch)
   for (const line of results) {
     const ok = line.startsWith('✓')
     log(`${ok ? colours.green : colours.yellow}${line}${colours.reset}`)
@@ -59,7 +59,7 @@ async function main() {
   const host = env.databaseUrl.replace(/^.*@/, '').replace(/\/.*$/, '')
   log(
     `database ${colours.dim}${host}${colours.reset} · ` +
-      `tick ${env.workerTickMs}ms · ${counts.queued} job(s) waiting`,
+      `tick ${env.workerTickMs}ms · ${env.workerBatch} job(s) at a time · ${counts.queued} waiting`,
   )
   log(`${colours.dim}Ctrl-C to stop.${colours.reset}`)
 

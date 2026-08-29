@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { invalidateStats } from '@/lib/queries/stats'
 import { redirect } from 'next/navigation'
 import { audit, get, run } from '@/lib/db'
 import { invalidateBlocklist } from '@/lib/safety'
@@ -28,8 +29,9 @@ export interface AdminState {
 }
 
 function refreshAll() {
-  // category counts are memoised for 30s; approving a site should show up now
+  // both are memoised for 30s; approving a site should show up now, not later
   invalidateCategoryCache()
+  invalidateStats()
   revalidatePath('/admin')
   revalidatePath('/admin/queue')
   revalidatePath('/admin/sites')

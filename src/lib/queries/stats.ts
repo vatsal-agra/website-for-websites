@@ -1,4 +1,5 @@
 import { all, dayOffset, get, isoOffset } from '../db'
+import { memo } from '../memo'
 
 export interface WebAmbleStats {
   approved: number
@@ -24,14 +25,21 @@ export const EMPTY_STATS: WebAmbleStats = {
 }
 
 /**
- * Every counter in one round trip.
+ * Every counter in one round trip, memoised for half a minute.
  *
  * This used to be fourteen parallel queries. Against a local database that was
  * free; against a network database it meant fourteen round trips on the layout
  * of *every* page. One query with scalar subselects costs the same on the
  * server and a fraction of the wall clock.
+ *
+ * It still sits on the layout, so it is on the critical path of every single
+ * page — and the numbers it counts move by a handful an hour at most. Thirty
+ * seconds of staleness buys back a full round trip on nearly every request.
+ * Anything that changes a counter calls `invalidateStats()`, so a moderator
+ * who approves a site sees the new number immediately rather than in half a
+ * minute.
  */
-export async function getStats(): Promise<WebAmbleStats> {
+const statsMemo = memo(30_000, async (): Promise<WebAmbleStats> => {
   try {
     const row = await get<Record<string, number>>(
       `SELECT
@@ -73,6 +81,14 @@ export async function getStats(): Promise<WebAmbleStats> {
     // a stats panel must never take the whole page down
     return EMPTY_STATS
   }
+})
+
+export async function getStats(): Promise<WebAmbleStats> {
+  return statsMemo()
+}
+
+export function invalidateStats() {
+  statsMemo.invalidate()
 }
 
 export interface DailyPoint {
