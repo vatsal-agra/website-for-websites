@@ -1,4 +1,4 @@
-import { all } from './db'
+import { all, run } from './db'
 import type { PageMetadata } from './metadata'
 import type { NormalizedUrl } from './url'
 
@@ -117,6 +117,17 @@ export async function loadBlocklist(): Promise<{ pattern: string; reason: string
 
 export function invalidateBlocklist() {
   blocklistCache = null
+}
+
+/** Add a hostname to the blocklist so the crawler stops finding it again. */
+export async function addBlocklistEntry(host: string, reason = ''): Promise<void> {
+  const pattern = host.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  if (!pattern.includes('.')) return
+  await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [
+    pattern,
+    reason.slice(0, 200),
+  ])
+  invalidateBlocklist()
 }
 
 export async function isBlocklisted(url: NormalizedUrl): Promise<string | null> {

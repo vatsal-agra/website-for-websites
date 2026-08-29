@@ -254,6 +254,7 @@ checked, and never call the classifier AI, because it is a weighted lexicon.
 | `npm run rescore` | Queue a re-crawl of anything without an evidence-based quality score (`-- --all` for everything) |
 | `npm run score -- <url>` | Fetch a page and print what the ingester would make of it — score, category and every contributing term |
 | `npm run audit` | Accessibility and markup audit of every route type: alt text, link and control names, heading order, duplicate ids |
+| `npm run triage -- <file>` | Work the review queue from a file of `id verdict reason` decisions (`-- --dry` to preview). See `docs/triage-2026-08-29.txt` for a worked example |
 | `npm run inspect` | Health readout: counts, cover art coverage, category spread, current top of the catalogue |
 | `npm run typecheck` | `tsc --noEmit` |
 

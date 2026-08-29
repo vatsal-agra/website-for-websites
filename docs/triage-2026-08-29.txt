@@ -1,0 +1,94 @@
+# Review queue, 29 August 2026 — 58 entries.
+#
+# Judged against /guidelines. The test there is not "is this important?" but
+# "would somebody be glad they found this?", so a one-page site about an
+# obscure hobby passes and a twelve-page funnel does not.
+#
+# `block` is used where the domain will keep being rediscovered by the link
+# graph and is never going to be listed — mostly product marketing and one
+# institutional cluster the crawler wandered into. Everything else is a plain
+# decline, which is reversible on appeal.
+#
+# id  verdict  reason
+
+# ---------------------------------------------------------------- listed --
+# Things that do one thing, and do it well.
+266 approve
+263 approve
+271 approve
+411 approve
+246 approve
+259 approve
+248 approve
+260 approve
+425 approve
+424 approve
+576 approve
+274 approve
+496 approve
+451 approve
+475 approve
+473 approve
+552 approve
+549 approve
+
+# Personal sites and small studios — explicitly welcome.
+406 approve
+542 approve
+569 approve
+483 approve
+481 approve
+484 approve
+438 approve
+541 approve
+
+# ------------------------------------------------------------- declined --
+
+# Gambling, which the guidelines exclude outright.
+435 block gambling — an iGaming platform provider
+
+# Product marketing. Real companies, real products, but the front page is a
+# funnel rather than something to read.
+528 block a software vendor's marketing site, not a website to browse
+547 block software marketing site
+574 block software marketing site
+546 block software marketing site
+520 block software marketing site
+521 block software marketing site
+500 block financial product marketing
+537 block consumer brand marketing
+563 block web agency marketing
+525 block corporate marketing
+553 reject a conference landing page rather than a site to browse
+
+# Deep sub-pages of one domain, and one documentation cluster the link graph
+# walked into. We list sites, not product pages.
+550 reject a product page on vercel.com, not a site of its own
+495 reject a product page on vercel.com, not a site of its own
+564 reject part of one vendor's component-library cluster
+578 reject part of one vendor's SDK cluster
+
+# Not websites: a status dashboard, an auth screen, an invite endpoint.
+534 block a status page for another site
+513 block a university single sign-on screen
+440 block an invite endpoint, not a website
+
+# Nothing on the page to describe. Reversible if that changes.
+432 reject the page says "coming soon" and nothing else
+526 reject nothing on the page to describe
+497 reject nothing readable on the page
+270 reject nothing on the page to describe
+264 reject the description is boilerplate copied from elsewhere
+557 reject nothing readable on the page
+
+# One French institutional cluster: a school intranet, an accreditation body,
+# a directors' conference, two portals. Each is real and none is a site anybody
+# would be glad to stumble into. Blocked because the link graph keeps
+# rediscovering them through each other.
+456 block an internal teaching resource for one school
+514 block a sector body's institutional site
+462 block a university network's institutional site
+468 block a school's institutional site
+460 block an accreditation body's institutional site
+463 block an institutional portal
+408 block an institutional portal

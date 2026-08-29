@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { invalidateStats } from '@/lib/queries/stats'
 import { redirect } from 'next/navigation'
 import { audit, get, run } from '@/lib/db'
-import { invalidateBlocklist } from '@/lib/safety'
+import { addBlocklistEntry, invalidateBlocklist } from '@/lib/safety'
 import { requireAdmin } from '@/lib/session'
 import { enqueue, retryJob, clearFinishedJobs } from '@/lib/jobs'
 import { registerAllHandlers, scheduleDueWork } from '@/lib/handlers'
@@ -285,11 +285,7 @@ export async function addBlocklistAction(_prev: AdminState, formData: FormData):
       .replace(/\/.*$/, '')
     if (!pattern.includes('.')) return { error: 'Enter a hostname, e.g. spam.example.' }
 
-    await run('INSERT INTO blocklist (pattern, reason) VALUES (?, ?) ON CONFLICT (pattern) DO NOTHING', [
-      pattern,
-      String(formData.get('reason') ?? '').slice(0, 200),
-    ])
-    invalidateBlocklist()
+    await addBlocklistEntry(pattern, String(formData.get('reason') ?? ''))
     audit('blocklist.added', pattern, '', `@${admin.username}`)
     revalidatePath('/admin/sources')
     return { ok: `Blocked ${pattern}.` }

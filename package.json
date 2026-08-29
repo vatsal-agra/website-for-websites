@@ -25,7 +25,8 @@
     "test:watch": "node --import tsx --test --watch \"tests/**/*.test.ts\"",
     "smoke": "tsx scripts/smoke.ts",
     "score": "tsx scripts/score.ts",
-    "audit": "tsx scripts/audit.ts"
+    "audit": "tsx scripts/audit.ts",
+    "triage": "tsx scripts/triage.ts"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",
