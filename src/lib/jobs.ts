@@ -65,11 +65,31 @@ export async function enqueue(
   }
 }
 
+/**
+ * How long a job has to wait before it counts as one priority band more
+ * urgent, and how far that can carry it. Cover art is priority 3 and a
+ * re-check is 0, so three hours of waiting is enough to put the oldest
+ * re-check ahead of freshly queued artwork — and no further.
+ */
+const AGEING_HOURS = 1
+const AGEING_CAP = 3
+
 export async function claimNext(): Promise<JobRow | null> {
+  // Strict priority starves the bottom of the queue. Discovery enqueues ingest
+  // jobs at priority 1 continuously, so five hundred re-checks at priority 0
+  // sat behind them indefinitely: nothing already in the catalogue was ever
+  // looked at again, dead entries were never retired, and stale scores never
+  // refreshed. Waiting therefore earns priority, up to a cap — new urgent work
+  // still goes first, but nothing waits forever.
   const job = await get<JobRow>(
     `SELECT * FROM jobs
      WHERE status = 'queued' AND run_at <= ?
-     ORDER BY priority DESC, run_at ASC, id ASC LIMIT 1`,
+     ORDER BY priority + LEAST(
+                EXTRACT(EPOCH FROM ((now() at time zone 'utc') - run_at::timestamp)) / ${AGEING_HOURS * 3600},
+                ${AGEING_CAP}
+              ) DESC,
+              run_at ASC, id ASC
+     LIMIT 1`,
     [nowIso()],
   )
   if (!job) return null
