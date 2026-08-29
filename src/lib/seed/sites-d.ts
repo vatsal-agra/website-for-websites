@@ -4,6 +4,11 @@ import type { SeedSite } from './types'
  * Second wave. Weighted towards the shelves the founding set left thin —
  * health, food, money, maps, reference and news — so no category looks
  * abandoned when someone opens it.
+ *
+ * One entry per site. An earlier version of this file listed a handful of
+ * blogs and archives alongside their own front pages — waitbutwhy.com and
+ * waitbutwhy.com/archive as two entries — which is exactly the deep sub-page
+ * the guidelines say we do not list.
  */
 export const SEED_SITES_D: SeedSite[] = [
   // ----------------------------------------------------------------- health --
@@ -30,7 +35,6 @@ export const SEED_SITES_D: SeedSite[] = [
   { url: 'https://www.justonecookbook.com', title: 'Just One Cookbook', tagline: 'Japanese home cooking, patiently explained for a kitchen that lacks the right pan.', category: 'food', tags: ['cooking', 'education'], attrs: ['free', 'hasFeed'] },
   { url: 'https://minimalistbaker.com', title: 'Minimalist Baker', tagline: 'Everything is ten ingredients or fewer, one bowl, or under thirty minutes.', category: 'food', tags: ['cooking'], attrs: ['free', 'hasFeed'] },
   { url: 'https://www.davidlebovitz.com', title: 'David Lebovitz', tagline: 'A pastry chef in Paris, writing about ingredients and the city with equal care.', category: 'food', tags: ['cooking', 'writing', 'travel'], attrs: ['free', 'hasFeed'] },
-  { url: 'https://www.kingarthurbaking.com/blog', title: 'King Arthur Baking Blog', tagline: 'The people who answer the baking hotline, writing down what goes wrong and why.', category: 'food', tags: ['cooking', 'education'], attrs: ['free', 'hasFeed'] },
   { url: 'https://www.thisoldhouse.com', title: 'This Old House', tagline: 'Forty years of showing people how their house actually works.', category: 'food', tags: ['diy', 'home', 'video'], attrs: ['free'] },
   { url: 'https://www.apartmenttherapy.com', title: 'Apartment Therapy', tagline: 'Small-space living, organising, and before-and-afters that are actually achievable.', category: 'food', tags: ['home', 'design'], attrs: ['free', 'hasFeed'] },
   { url: 'https://www.almanac.com', title: "The Old Farmer's Almanac", tagline: 'Planting calendars, frost dates and folklore. Continuously published since 1792.', category: 'food', tags: ['plants', 'weather', 'history'], attrs: ['free'] },
@@ -52,6 +56,7 @@ export const SEED_SITES_D: SeedSite[] = [
   { url: 'https://www.themuse.com', title: 'The Muse', tagline: 'Career advice and job listings with a look inside the company first.', category: 'work', tags: ['jobs', 'education'], attrs: ['free'] },
 
   // ------------------------------------------------------------------- maps --
+  { url: 'https://www.geoportail.gouv.fr', title: 'Géoportail', tagline: 'France mapped by its national survey — relief, land use, cadastre and aerial photography back to 1950, layered on top of each other.', category: 'maps', tags: ['maps', 'geography', 'open-data', 'history'], attrs: ['free', 'noSignup', 'interactive'] },
   { url: 'https://www.seat61.com', title: 'The Man in Seat 61', tagline: 'How to get anywhere in the world by train, researched obsessively by one man.', category: 'maps', tags: ['travel', 'reference'], attrs: ['free', 'noSignup', 'noAds'], quality: 0.92 },
   { url: 'https://oldmapsonline.org', title: 'Old Maps Online', tagline: 'Search centuries of historical maps by pointing at where you care about.', category: 'maps', tags: ['maps', 'history', 'archive'], attrs: ['free', 'noSignup', 'interactive'] },
   { url: 'https://www.davidrumsey.com', title: 'David Rumsey Map Collection', tagline: 'A hundred thousand digitised historical maps, at extraordinary resolution.', category: 'maps', tags: ['maps', 'history', 'archive'], attrs: ['free', 'noSignup', 'noAds'] },
@@ -103,14 +108,12 @@ export const SEED_SITES_D: SeedSite[] = [
   // ------------------------------------------------------------------ extra --
   { url: 'https://www.are.na', title: 'Are.na', tagline: 'A calm, slow tool for collecting things and connecting them. No feed, no likes.', category: 'tools', tags: ['notes', 'community', 'minimal'], attrs: ['free', 'noAds'] },
   { url: 'https://readymag.com', title: 'Readymag', tagline: 'Design and publish a web page as if it were a magazine spread.', category: 'design', tags: ['design', 'tools', 'inspiration'], attrs: [] },
-  { url: 'https://www.are.na/blog', title: 'Are.na Blog', tagline: 'Essays about attention, collecting and the shape of online research.', category: 'reading', tags: ['writing', 'indie-web'], attrs: ['free', 'noAds', 'longform'] },
   { url: 'https://ciechanowski.substack.com', title: 'Bartosz Ciechanowski — Notes', tagline: 'Behind-the-scenes notes on building the interactive explainers.', category: 'developer', tags: ['writing', 'graphics'], attrs: ['free', 'hasFeed'] },
   { url: 'https://anvaka.github.io', title: 'Anvaka', tagline: 'Graph visualisations, map experiments and mathematical toys, all open source.', category: 'science', tags: ['charts', 'generative', 'open-source'], attrs: ['free', 'openSource', 'interactive'] },
   { url: 'https://www.visualcapitalist.com', title: 'Visual Capitalist', tagline: 'Data journalism as very large, very shareable infographics.', category: 'science', tags: ['charts', 'statistics', 'design'], attrs: ['free', 'hasFeed'] },
   { url: 'https://pudding.cool', title: 'The Pudding', tagline: 'Visual essays that answer questions nobody thought to ask, brilliantly.', category: 'science', tags: ['charts', 'interactive', 'writing'], attrs: ['free', 'noSignup', 'noAds', 'interactive'], quality: 0.95 },
   { url: 'https://flowingdata.com', title: 'FlowingData', tagline: 'Nathan Yau on visualising data, and critiquing how others do it.', category: 'science', tags: ['charts', 'statistics', 'writing'], attrs: ['free', 'hasFeed'] },
   { url: 'https://informationisbeautiful.net', title: 'Information is Beautiful', tagline: 'David McCandless turning big datasets into posters worth staring at.', category: 'science', tags: ['charts', 'design'], attrs: ['free'] },
-  { url: 'https://waitbutwhy.com/archive', title: 'Wait But Why — Archive', tagline: 'The full back catalogue, which is where the very long posts live.', category: 'reading', tags: ['writing', 'illustration'], attrs: ['free', 'longform'] },
   { url: 'https://thecreativeindependent.com', title: 'The Creative Independent', tagline: 'Long interviews with artists about the practical business of making things.', category: 'art', tags: ['writing', 'community'], attrs: ['free', 'noSignup', 'noAds', 'longform'] },
   { url: 'https://www.artsy.net', title: 'Artsy', tagline: 'Contemporary art discovery, with editorial that explains what you are looking at.', category: 'art', tags: ['archive', 'writing'], attrs: ['free'] },
   { url: 'https://www.behance.net', title: 'Behance', tagline: 'Full project case studies rather than single polished shots.', category: 'design', tags: ['inspiration', 'illustration'], attrs: ['free'] },
@@ -130,7 +133,6 @@ export const SEED_SITES_D: SeedSite[] = [
   { url: 'https://it-tools.tech', title: 'IT Tools', tagline: 'A hundred small developer utilities in one fast, ad-free page.', category: 'tools', tags: ['tools', 'programming', 'open-source'], attrs: ['free', 'noSignup', 'openSource', 'noAds'] },
   { url: 'https://tinywow.com', title: 'TinyWow', tagline: 'A large pile of free file tools with no account and no watermark.', category: 'tools', tags: ['tools', 'converter'], attrs: ['free', 'noSignup'] },
   { url: 'https://www.autodraw.com', title: 'AutoDraw', tagline: 'Draw badly and it guesses what you meant, then swaps in a proper icon.', category: 'tools', tags: ['tools', 'illustration', 'ai'], attrs: ['free', 'noSignup', 'interactive'] },
-  { url: 'https://excalidraw.com/blog', title: 'Excalidraw Blog', tagline: 'How a hand-drawn whiteboard gets built, from the people building it.', category: 'developer', tags: ['programming', 'open-source', 'writing'], attrs: ['free', 'hasFeed'] },
   { url: 'https://www.perfectlynormal.co.uk', title: 'Perfectly Normal', tagline: 'Quiet corner of the web where someone writes about ordinary things carefully.', category: 'reading', tags: ['writing', 'indie-web'], attrs: ['free', 'noAds'] },
   { url: 'https://100r.co', title: '100 Rabbits', tagline: 'Two people building software from a sailboat, with radical constraints.', category: 'curios', tags: ['indie-web', 'open-source', 'writing'], attrs: ['free', 'noAds', 'openSource'], quality: 0.91 },
   { url: 'https://solar.lowtechmagazine.com', title: 'LOW←TECH MAGAZINE', tagline: 'A website powered by a solar panel. It goes offline when the weather is bad.', category: 'curios', tags: ['indie-web', 'climate', 'writing'], attrs: ['free', 'noSignup', 'noAds', 'longform'], quality: 0.94 },
@@ -142,7 +144,6 @@ export const SEED_SITES_D: SeedSite[] = [
   { url: 'https://every-layout.dev', title: 'Every Layout', tagline: 'Rethinking CSS layout as a small set of composable primitives.', category: 'developer', tags: ['css', 'design', 'education'], attrs: ['longform'] },
   { url: 'https://htmx.org', title: 'htmx', tagline: 'What if you could do most of it with attributes on the HTML instead?', category: 'developer', tags: ['javascript', 'open-source', 'documentation'], attrs: ['free', 'openSource', 'noAds'] },
   { url: 'https://caniemail.com', title: 'Can I email', tagline: 'Support tables for HTML email, where the browser wars never ended.', category: 'developer', tags: ['documentation', 'email', 'css'], attrs: ['free', 'noSignup', 'noAds'] },
-  { url: 'https://roadmap.sh/frontend', title: 'Frontend Roadmap', tagline: 'The whole front-end landscape as one opinionated, navigable map.', category: 'learning', tags: ['programming', 'education', 'css'], attrs: ['free'] },
   { url: 'https://www.freecodecamp.org', title: 'freeCodeCamp', tagline: 'Thousands of hours of programming curriculum, free, plus certifications.', category: 'learning', tags: ['programming', 'education', 'community'], attrs: ['free', 'noAds'], quality: 0.9 },
   { url: 'https://www.codewars.com', title: 'Codewars', tagline: 'Programming practice as graded katas you can compare with other solutions.', category: 'learning', tags: ['programming', 'puzzle', 'community'], attrs: ['free'] },
   { url: 'https://adventofcode.com', title: 'Advent of Code', tagline: 'Twenty-five programming puzzles every December, with a devoted following.', category: 'learning', tags: ['programming', 'puzzle', 'daily'], attrs: ['free', 'noSignup', 'noAds'] },

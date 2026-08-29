@@ -69,9 +69,16 @@ for (const decision of decisions) {
     log(`${colours.yellow}?${colours.reset} ${decision.id} — no such entry`)
     continue
   }
-  if (site.status !== 'pending') {
+  // Usually the queue, but a decision can also retire something already live —
+  // entries auto-approved under an older, more credulous scorer have to be
+  // removable by the same route, with the same reason recorded.
+  const target = decision.verdict === 'approve' ? 'approved' : 'rejected'
+  if (site.status === target) {
     log(`${colours.dim}·${colours.reset} ${site.domain} is already ${site.status}, leaving it`)
     continue
+  }
+  if (site.status !== 'pending') {
+    log(`${colours.yellow}!${colours.reset} ${site.domain} is ${site.status}, not queued — ${decision.verdict}ing anyway`)
   }
 
   const mark =

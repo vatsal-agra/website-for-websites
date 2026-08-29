@@ -1,0 +1,42 @@
+# Twenty-four live entries, 29 August 2026.
+#
+# All auto-approved by the crawler before three fixes landed on the same day:
+# the quality score used to pay for polished metadata, the candidate drain used
+# to walk the link graph breadth-first out of one neighbourhood, and the safety
+# screen did not recognise a page that is machinery rather than a website.
+#
+# The result was one cluster — a Paris engineering-school network — arriving
+# through each other's outbound links and scoring 0.8 to 1.0, because an
+# institution's homepage has a communications team and therefore excellent
+# metadata. None of them is a site anybody browsing a web directory wants, and
+# most were misfiled on top of it: a hospital under Web Curios, a housing
+# association under Web Curios, an engineering school under Music & Audio.
+#
+# Blocked rather than declined because the link graph will keep rediscovering
+# them through each other. The one genuinely good thing this cluster pointed at
+# — France's national map viewer — is added to the seed set instead.
+
+567 block an institutional site for a pensions body
+559 block a research network's institutional site
+461 block a sector body's institutional site
+531 block a hospital's institutional site
+568 block a research cohort's institutional site
+409 block a school's institutional site
+455 block an internal teaching resource for one school
+467 block a school's institutional site
+458 block a foundation's institutional site
+539 block a hospital's institutional site
+407 block the national mapping agency's corporate site; the map viewer is listed instead
+544 block an institute's institutional site
+545 block an incubator's institutional site
+459 block a university's institutional site
+555 block a research institute's institutional site
+540 block a university group's institutional site
+471 block a web agency for the public sector
+457 block an academic press's institutional site
+516 block a government programme portal
+530 block a housing association's site
+571 block an alumni association's site
+469 block a school's institutional site
+470 block a school's institutional site
+474 block a digital marketing agency
