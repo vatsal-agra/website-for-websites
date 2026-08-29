@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bookmark, LayoutGrid, LogOut, Menu, Plus, Shuffle, User as UserIcon, X } from 'lucide-react'
+import { Bookmark, LayoutGrid, LogOut, Menu, Plus, Settings, Shuffle, User as UserIcon, X } from 'lucide-react'
 import type { PublicUser } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { CommandPalette } from './command-palette'
@@ -124,6 +124,9 @@ export function Header({ user, pendingCount = 0 }: { user: PublicUser | null; pe
                   </MenuLink>
                   <MenuLink href="/saved" icon={Bookmark}>
                     Saved sites
+                  </MenuLink>
+                  <MenuLink href="/settings" icon={Settings}>
+                    Settings
                   </MenuLink>
                   {user.role === 'admin' && (
                     <MenuLink href="/admin" icon={LayoutGrid} badge={pendingCount || undefined}>

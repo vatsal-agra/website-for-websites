@@ -165,7 +165,7 @@ web-amble detects this case and says so plainly rather than surfacing the driver
 ### Before you deploy
 
 ```bash
-npm test          # 77 unit tests over the pure logic
+npm test          # 80 unit tests over the pure logic
 npm run typecheck
 npm run build     # succeeds even with no DATABASE_URL set
 npm run smoke     # every route type against a running server, read to the last byte

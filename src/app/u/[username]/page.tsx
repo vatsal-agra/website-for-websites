@@ -74,6 +74,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
               <span>Joined {formatDate(profile.created_at)}</span>
               {profile.role === 'admin' && <Badge tone="accent">editor</Badge>}
             </p>
+            {profile.bio && (
+              <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{profile.bio}</p>
+            )}
           </div>
         </div>
 

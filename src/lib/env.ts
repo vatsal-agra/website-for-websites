@@ -58,11 +58,12 @@ export const env = {
   /**
    * Jobs the long-running worker takes per tick.
    *
-   * This is the throttle that keeps the catalogue's background work from
-   * starving the pages. Every job is several statements, so a batch of six
-   * against a small shared database is enough to make a page render time out
-   * while cover art is being generated. Three is comfortable; raise it only if
-   * the database has headroom to spare.
+   * Jobs run one at a time, so this is not a concurrency limit — it is a duty
+   * cycle. The worker does this many jobs, then sleeps for `WORKER_TICK_MS`.
+   * On a small shared database that pause is what keeps page renders
+   * responsive: the contention is the database's CPU, not its connections, and
+   * a worker that never rests will hold a free-tier instance at its limit
+   * indefinitely. Three jobs then a pause is comfortable.
    */
   workerBatch: num('WORKER_BATCH', 3),
   workerEnabled: bool('WORKER_ENABLED', true),

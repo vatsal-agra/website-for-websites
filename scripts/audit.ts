@@ -144,6 +144,7 @@ const paths = [
   '/guidelines',
   '/login',
   '/signup',
+  '/goodbye',
   '/this-page-does-not-exist',
   site && `/site/${site.slug}`,
   category && `/category/${category.slug}`,

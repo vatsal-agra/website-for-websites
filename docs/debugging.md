@@ -69,10 +69,17 @@ that something is the worker — `npm run worker` takes a batch of jobs every fe
 seconds, each job is several statements, and a free-tier database has about one
 core to share between that and the page you are loading.
 
-Stop the worker and load the page again. If it comes back, that was it — lower
-`WORKER_BATCH` (2 is comfortable locally) or leave the worker off while you
-work on pages. On Netlify this is far gentler: the scheduled function ticks
-every five minutes rather than continuously.
+Stop the worker and load the page again. If it comes back, that was it.
+
+Note what is actually contended. Jobs run one at a time and the app pools five
+connections, so this is not connection exhaustion — it is the database's CPU,
+which on a free tier is a fraction of a core shared between the worker's writes
+and your page's reads. `WORKER_BATCH` and `WORKER_TICK_MS` together set the
+worker's duty cycle; lengthening the tick helps more than shrinking the batch.
+Or leave the worker off while you work on pages.
+
+On Netlify this is far gentler: the scheduled function ticks every five minutes
+and each tick is time-boxed to 45 seconds.
 
 `application_name` will not help you here. Through Supabase's transaction
 pooler every connection reports as `Supavisor`, so `pg_stat_activity` cannot

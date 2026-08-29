@@ -134,6 +134,8 @@ const routes: [string, number[]?][] = [
   ['/login', [200, 307]],
   ['/signup', [200, 307]],
   ['/saved', [200, 307]],
+  ['/settings', [200, 307]],
+  ['/goodbye'],
   ['/feed.xml'],
   ['/sitemap.xml'],
   ['/robots.txt'],
