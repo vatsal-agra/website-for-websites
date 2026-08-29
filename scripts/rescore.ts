@@ -22,6 +22,10 @@ const everything = process.argv.includes('--all')
 banner('web-amble — rescore')
 await ready()
 
+// Pending entries are included: a re-check re-runs the content screen, so
+// anything that is a login page or an interstitial retires itself instead of
+// waiting for a moderator to work out what they are looking at.
+const scope = `status IN ('approved', 'pending')`
 const filter = everything ? '' : 'AND checked_at IS NULL'
 
 // Anything already waiting keeps its place; a finished job for the same site is
@@ -29,7 +33,7 @@ const filter = everything ? '' : 'AND checked_at IS NULL'
 await run(
   `DELETE FROM jobs
    WHERE type = 'site.recheck' AND status NOT IN ('queued', 'running')
-     AND dedupe_key IN (SELECT 'recheck:' || id FROM sites WHERE status = 'approved' ${filter})`,
+     AND dedupe_key IN (SELECT 'recheck:' || id FROM sites WHERE ${scope} ${filter})`,
 )
 
 const result = await run(
@@ -41,12 +45,12 @@ const result = await run(
           to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS'),
           3
    FROM sites
-   WHERE status = 'approved' ${filter}
+   WHERE ${scope} ${filter}
    ON CONFLICT (dedupe_key) DO NOTHING`,
 )
 
 const candidates = await get<{ n: number }>(
-  `SELECT COUNT(*)::int AS n FROM sites WHERE status = 'approved' ${filter}`,
+  `SELECT COUNT(*)::int AS n FROM sites WHERE ${scope} ${filter}`,
 )
 const counts = await jobCounts()
 
