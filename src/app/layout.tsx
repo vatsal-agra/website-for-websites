@@ -8,6 +8,7 @@ import { EMPTY_STATS, getStats } from '@/lib/queries/stats'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { ThemeScript } from '@/components/theme-toggle'
+import { SiteJsonLd } from '@/components/site-jsonld'
 
 const sans = Inter({
   subsets: ['latin'],
@@ -83,6 +84,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <ThemeScript />
+        <link rel="alternate" type="application/rss+xml" title={`${env.siteName} feed`} href={`${env.siteUrl}/feed.xml`} />
+        <SiteJsonLd />
       </head>
       <body>
         <a

@@ -84,16 +84,13 @@ function Hero() {
           <HeroSearch />
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-muted">
+          <ButtonLink href="/shuffle" variant="primary" size="lg">
+            <Shuffle className="h-4 w-4" />
+            Shuffle a website
+          </ButtonLink>
           <Link href="/browse" className="no-underline transition-colors hover:text-ink">
-            Browse everything →
-          </Link>
-          <Link
-            href="/shuffle"
-            className="inline-flex items-center gap-1.5 no-underline transition-colors hover:text-ink"
-          >
-            <Shuffle className="h-3.5 w-3.5" />
-            Surprise me
+            Browse everything
           </Link>
           <Link href="/submit" className="no-underline transition-colors hover:text-ink">
             Submit a site
