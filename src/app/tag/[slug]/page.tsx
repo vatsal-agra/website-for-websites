@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { DiscoveryActions } from '@/components/discovery-actions'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { getTag, listCategories, listSites, listTags } from '@/lib/queries/sites'
@@ -10,7 +11,7 @@ import type { BrowseQuery } from '@/components/filter-bar'
 import { FilterBar, Pagination, ResultCount, parseQuery } from '@/components/filter-bar'
 import { CountSkeleton, GridSkeleton } from '@/components/skeletons'
 import { FeedLink } from '@/components/feed-link'
-import { ChipLink, EmptyState } from '@/components/ui/primitives'
+import { ButtonLink, ChipLink, EmptyState } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,7 +125,22 @@ async function TagResults({
 }) {
   const result = await results
   if (result.sites.length === 0) {
-    return <EmptyState title="Nothing here right now" description="Try loosening the filters." />
+    return (
+      <EmptyState
+        title="No sites to show for this tag"
+        description="Try loosening the filters, explore another corner of the web with Shuffle, or submit a site we are missing."
+        action={
+          <DiscoveryActions>
+            <ButtonLink href={base} variant="secondary">
+              Reset filters
+            </ButtonLink>
+            <ButtonLink href="/tags" variant="secondary">
+              Explore tags
+            </ButtonLink>
+          </DiscoveryActions>
+        }
+      />
+    )
   }
   return (
     <>

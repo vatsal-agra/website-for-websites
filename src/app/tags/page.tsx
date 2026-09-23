@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { DiscoveryActions } from '@/components/discovery-actions'
 import { listTags } from '@/lib/queries/sites'
-import { SectionHeader } from '@/components/ui/primitives'
+import { EmptyState, SectionHeader } from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,34 +78,42 @@ export default async function TagsPage() {
         </section>
       )}
 
-      <section>
-        <SectionHeader
-          eyebrow="A to Z"
-          title="Every tag"
-          description="Counts are approved sites only, so they match what you will actually see on the page."
+      {tags.length === 0 ? (
+        <EmptyState
+          title="No tags to explore yet"
+          description="Try Shuffle to discover a site, or submit a website to help the catalogue grow."
+          action={<DiscoveryActions />}
         />
-        <div className="space-y-8">
-          {[...letters].map(([letter, group]) => (
-            <div key={letter} className="grid gap-4 sm:grid-cols-[3rem_1fr]">
-              <p className="font-display text-2xl text-faint sm:pt-0.5" aria-hidden="true">
-                {letter}
-              </p>
-              <div className="flex flex-wrap gap-x-5 gap-y-2.5">
-                {group.map((tag) => (
-                  <Link
-                    key={tag.id}
-                    href={`/tag/${tag.slug}`}
-                    className="text-sm text-muted no-underline transition-colors hover:text-ink"
-                  >
-                    {tag.name}
-                    <span className="ml-1.5 font-mono text-2xs text-faint">{tag.uses}</span>
-                  </Link>
-                ))}
+      ) : (
+        <section>
+          <SectionHeader
+            eyebrow="A to Z"
+            title="Every tag"
+            description="Counts are approved sites only, so they match what you will actually see on the page."
+          />
+          <div className="space-y-8">
+            {[...letters].map(([letter, group]) => (
+              <div key={letter} className="grid gap-4 sm:grid-cols-[3rem_1fr]">
+                <p className="font-display text-2xl text-faint sm:pt-0.5" aria-hidden="true">
+                  {letter}
+                </p>
+                <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+                  {group.map((tag) => (
+                    <Link
+                      key={tag.id}
+                      href={`/tag/${tag.slug}`}
+                      className="text-sm text-muted no-underline transition-colors hover:text-ink"
+                    >
+                      {tag.name}
+                      <span className="ml-1.5 font-mono text-2xs text-faint">{tag.uses}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

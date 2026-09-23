@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
+import { DiscoveryActions } from '@/components/discovery-actions'
 import { getCurrentUser } from '@/lib/session'
 import { listCategories, listSites, listTags } from '@/lib/queries/sites'
 import { SiteGrid } from '@/components/site/site-card'
@@ -135,16 +136,13 @@ async function SearchResults({
       <EmptyState
         icon={<SearchX className="h-8 w-8" />}
         title={`Nothing matched “${term}”`}
-        description="web-amble only indexes whole websites, not individual pages — so try a broader term, or tell us about the site we are missing."
+        description="web-amble indexes whole websites, not individual pages. Try a broader term, explore with Shuffle, or submit a site we are missing."
         action={
-          <div className="flex flex-wrap justify-center gap-2">
-            <ButtonLink href={`/submit?url=${encodeURIComponent(term)}`} variant="primary">
-              Submit a site
-            </ButtonLink>
+          <DiscoveryActions>
             <ButtonLink href="/browse" variant="secondary">
               Browse instead
             </ButtonLink>
-          </div>
+          </DiscoveryActions>
         }
       />
     )

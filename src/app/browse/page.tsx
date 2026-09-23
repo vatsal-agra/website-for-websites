@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { SearchX } from 'lucide-react'
+import { DiscoveryActions } from '@/components/discovery-actions'
 import { getCurrentUser } from '@/lib/session'
 import { listCategories, listSites, listTags } from '@/lib/queries/sites'
 import { SiteGrid } from '@/components/site/site-card'
@@ -99,11 +100,13 @@ async function SiteResults({
       <EmptyState
         icon={<SearchX className="h-8 w-8" />}
         title="Nothing matches those filters"
-        description="Try removing an attribute or picking a different category. The catalogue is big, but it is not infinite."
+        description="Try removing a filter, let Shuffle pick a site, or submit a website we are missing."
         action={
-          <ButtonLink href="/browse" variant="secondary">
-            Reset filters
-          </ButtonLink>
+          <DiscoveryActions>
+            <ButtonLink href="/browse" variant="secondary">
+              Reset filters
+            </ButtonLink>
+          </DiscoveryActions>
         }
       />
     )
