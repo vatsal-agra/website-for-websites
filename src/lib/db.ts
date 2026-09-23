@@ -89,11 +89,21 @@ function explain(err: unknown): never {
   // Supabase pauses free-tier projects when they go idle. The pooler then
   // reports a missing tenant, which reads like a credentials problem and is
   // not — it cost hours to diagnose once already.
-  if (/tenant\/user .* not found/i.test(message) || code === 'ENOTFOUND') {
+  if (/tenant\/user .* not found/i.test(message)) {
     throw new Error(
       'Cannot reach the database. If this is a free-tier Supabase project it has probably ' +
         'auto-paused after being idle — resume it from the dashboard. Otherwise check DATABASE_URL. ' +
         `(driver said: ${message.slice(0, 120)})`,
+    )
+  }
+
+  // A name that will not resolve is the network, not the database. Saying
+  // "your project has paused" here sends people to a dashboard that is fine,
+  // which is worse than saying nothing.
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+    throw new Error(
+      `Could not resolve the database host. This is DNS, not the database — check the network, ` +
+        `and check the host in DATABASE_URL is spelled right. (driver said: ${message.slice(0, 120)})`,
     )
   }
 

@@ -13,6 +13,7 @@ export function CategoryTile({ category, className }: { category: Category; clas
   return (
     <Link
       href={`/category/${category.slug}`}
+      aria-label={category.name}
       className={cn(
         'group relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 no-underline transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-card',
         className,
@@ -55,6 +56,12 @@ export function CollectionCard({
   return (
     <Link
       href={`/collections/${collection.slug}`}
+      // The title is inside this link, but React's streaming can emit the card
+      // body after the anchor that contains it and move it in on the client —
+      // so in the HTML as served the link has no text at all. The label is on
+      // the tag itself, which is true the moment the anchor exists, with or
+      // without JavaScript.
+      aria-label={collection.title}
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface no-underline transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-lift',
         className,
