@@ -5,6 +5,7 @@ import { useActionState } from 'react'
 import Link from 'next/link'
 import { AlertCircle, ArrowRight, Check, Info, Loader2 } from 'lucide-react'
 import { submitSiteAction, type SubmitState } from '@/lib/actions/submit'
+import { describeUrlProblem } from '@/lib/submit-url'
 import { Button, ButtonLink } from '@/components/ui/primitives'
 
 const initial: SubmitState = { status: 'idle' }
@@ -12,6 +13,28 @@ const initial: SubmitState = { status: 'idle' }
 export function SubmitForm({ initialUrl, signedIn }: { initialUrl: string; signedIn: boolean }) {
   const [state, action, pending] = useActionState(submitSiteAction, initial)
   const [url, setUrl] = React.useState(initialUrl)
+  const [localError, setLocalError] = React.useState<string | null>(null)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const error = localError ?? (state.status === 'error' ? state.message : null)
+
+  // Send focus back to the field the message is about, so keyboard and screen
+  // reader users land on the thing they have to change.
+  React.useEffect(() => {
+    if (error) inputRef.current?.focus()
+  }, [error])
+
+  // The same check the action runs. Catching an obvious typo here answers the
+  // submitter straight away instead of costing a round trip and one of their
+  // rate limit slots. Without JavaScript the form still posts and the action
+  // returns the identical message.
+  function guard(event: React.FormEvent<HTMLFormElement>) {
+    const problem = describeUrlProblem(url)
+    if (problem) {
+      event.preventDefault()
+      setLocalError(problem)
+    }
+  }
 
   if (state.status === 'ok') {
     return (
@@ -37,7 +60,7 @@ export function SubmitForm({ initialUrl, signedIn }: { initialUrl: string; signe
   }
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={guard} className="space-y-4">
       {/* honeypot */}
       <input
         type="text"
@@ -53,6 +76,7 @@ export function SubmitForm({ initialUrl, signedIn }: { initialUrl: string; signe
           Website address
         </label>
         <input
+          ref={inputRef}
           id="url"
           name="url"
           type="text"
@@ -60,10 +84,20 @@ export function SubmitForm({ initialUrl, signedIn }: { initialUrl: string; signe
           required
           autoFocus
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="example.com"
-          className="h-12 w-full rounded-xl border border-line bg-surface px-4 text-base outline-none transition-colors placeholder:text-faint focus:border-ink/40"
+          onChange={(e) => {
+            setUrl(e.target.value)
+            setLocalError(null)
+          }}
+          placeholder="https://example.com"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? 'url-error url-hint' : 'url-hint'}
+          className={`h-12 w-full rounded-xl border bg-surface px-4 text-base outline-none transition-colors placeholder:text-faint ${
+            error ? 'border-danger/50 focus:border-danger' : 'border-line focus:border-ink/40'
+          }`}
         />
+        <p id="url-hint" className="mt-1.5 text-xs leading-relaxed text-faint">
+          The homepage works best. Typing https:// is optional.
+        </p>
       </div>
 
       <div>
@@ -80,15 +114,22 @@ export function SubmitForm({ initialUrl, signedIn }: { initialUrl: string; signe
         />
       </div>
 
-      {state.status === 'error' && (
-        <p className="flex items-start gap-2 rounded-xl border border-danger/25 bg-danger/5 px-3.5 py-3 text-sm leading-relaxed text-danger">
+      {error && (
+        <p
+          id="url-error"
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-danger/25 bg-danger/5 px-3.5 py-3 text-sm leading-relaxed text-danger"
+        >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {state.message}
+          <span>{error}</span>
         </p>
       )}
 
       {state.status === 'duplicate' && (
-        <div className="flex items-start gap-2 rounded-xl border border-line bg-raised px-3.5 py-3 text-sm leading-relaxed text-muted">
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-xl border border-line bg-raised px-3.5 py-3 text-sm leading-relaxed text-muted"
+        >
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             {state.message}{' '}

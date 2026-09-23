@@ -4,6 +4,7 @@ import { audit, get } from '@/lib/db'
 import { clientKey, getCurrentUser } from '@/lib/session'
 import { LIMITS, rateLimit } from '@/lib/ratelimit'
 import { ingestUrl } from '@/lib/ingest'
+import { describeUrlProblem } from '@/lib/submit-url'
 import { normalizeUrl } from '@/lib/url'
 import { getSiteByDomainKey, invalidateCategoryCache } from '@/lib/queries/sites'
 import { invalidateStats } from '@/lib/queries/stats'
@@ -22,19 +23,17 @@ export async function submitSiteAction(_prev: SubmitState, formData: FormData): 
 
   const limit = await rateLimit('submit', user ? `u${user.id}` : ip, LIMITS.submit.limit, LIMITS.submit.window)
   if (!limit.ok) {
-    return {
-      status: 'error',
-      message: `That is enough submissions for now — try again in about ${Math.ceil(limit.retryAfterSeconds / 60)} minutes.`,
-    }
+    return { status: 'error', message: `That is enough submissions for now. ${retryIn(limit.retryAfterSeconds)}` }
   }
 
   // honeypot: real people never fill this in
   if (String(formData.get('website') ?? '')) {
-    return { status: 'ok', message: 'Thanks — we will take a look.' }
+    return { status: 'ok', message: 'Thanks, we will take a look.' }
   }
 
   const raw = String(formData.get('url') ?? '').trim()
-  if (!raw) return { status: 'error', message: 'Paste the address of the site you want to add.' }
+  const problem = describeUrlProblem(raw)
+  if (problem) return { status: 'error', message: problem }
 
   const normalized = normalizeUrl(raw)
   if (!normalized) {
@@ -91,24 +90,35 @@ export async function submitSiteAction(_prev: SubmitState, formData: FormData): 
     message:
       outcome.status === 'approved'
         ? 'It is live in the catalogue already.'
-        : 'It is in the review queue — an editor will look at it shortly.',
+        : 'It is in the review queue. An editor will look at it shortly.',
   }
+}
+
+/** How long until the next submission is allowed, in words. */
+function retryIn(seconds: number): string {
+  if (seconds <= 60) return 'Try again in under a minute.'
+  const minutes = Math.ceil(seconds / 60)
+  if (minutes < 60) return `Try again in about ${minutes} minutes.`
+  const hours = Math.ceil(minutes / 60)
+  return `Try again in about ${hours} ${hours === 1 ? 'hour' : 'hours'}.`
 }
 
 function friendlyReason(stage: string, reason: string): string {
   switch (stage) {
+    case 'normalize':
+      return 'That does not look like a web address. Try something like example.com.'
     case 'fetch':
-      return `We could not load that page (${reason}). Check the address, or try again once the site is back up.`
+      return `We could not load that page (${reason}). Check the address for a typo, or try again once the site is back up.`
     case 'robots':
       return 'That site’s robots.txt asks crawlers not to read it, so we cannot catalogue it.'
     case 'content-type':
-      return 'That address returned a file rather than a web page.'
+      return 'That address returned a file rather than a web page. Link to the page it sits on instead.'
     case 'filter':
-      return `We do not list this kind of link — ${reason}.`
+      return `We do not list this kind of link: ${reason}. A site’s own homepage is usually the right thing to submit.`
     case 'safety-url':
     case 'safety-content':
       return `That site did not pass our content checks (${reason}).`
     default:
-      return reason || 'Something went wrong while reading that page.'
+      return reason || 'Something went wrong while reading that page. Try again in a few minutes.'
   }
 }
